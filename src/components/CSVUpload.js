@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import Papa from 'papaparse';
 
-export default function CSVUpload({ onSchoolsLoaded, setLoading, enableAddToDefault }) {
+export default function CSVUpload({ onSchoolsLoaded, enableAddToDefault }) {
   const [file, setFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [csvHeaders, setCsvHeaders] = useState([]);
@@ -11,6 +11,7 @@ export default function CSVUpload({ onSchoolsLoaded, setLoading, enableAddToDefa
   const [geocodingInProgress, setGeocodingInProgress] = useState(false);
   const [geocodingProgress, setGeocodingProgress] = useState(0);
   const [addToDefaultDataset, setAddToDefaultDataset] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [fieldMapping, setFieldMapping] = useState({
     name: '',
     address: '',
@@ -114,7 +115,7 @@ export default function CSVUpload({ onSchoolsLoaded, setLoading, enableAddToDefa
   const parseFile = useCallback(() => {
     if (!file) return;
     
-    setLoading(true);
+    setIsLoading(true);
     
     Papa.parse(file, {
       header: true,
@@ -149,7 +150,7 @@ export default function CSVUpload({ onSchoolsLoaded, setLoading, enableAddToDefa
           
           setFieldMapping(initialMapping);
           setShowMapping(true);
-          setLoading(false);
+          setIsLoading(false);
         } else {
           // All required fields exist, process file directly
           processCsvData(headers, false);
@@ -158,10 +159,10 @@ export default function CSVUpload({ onSchoolsLoaded, setLoading, enableAddToDefa
       error: (error) => {
         console.error('Error parsing CSV:', error);
         alert('Error parsing CSV file');
-        setLoading(false);
+        setIsLoading(false);
       }
     });
-  }, [file, setLoading, fieldMapping]);
+  }, [file, fieldMapping]);
   
   const processCsvData = useCallback(async (headers, useMapping = false) => {
     Papa.parse(file, {
@@ -209,16 +210,16 @@ export default function CSVUpload({ onSchoolsLoaded, setLoading, enableAddToDefa
         
         // Reset mapping state
         setShowMapping(false);
-        setLoading(false);
+        setIsLoading(false);
         setAddToDefaultDataset(false); // Reset the checkbox for next time
       },
       error: (error) => {
         console.error('Error processing CSV:', error);
         alert('Error processing CSV file');
-        setLoading(false);
+        setIsLoading(false);
       }
     });
-  }, [file, onSchoolsLoaded, setLoading, fieldMapping, addToDefaultDataset]);
+  }, [file, onSchoolsLoaded, fieldMapping, addToDefaultDataset]);
   
   const handleSubmit = () => {
     if (!file) return;
@@ -234,7 +235,7 @@ export default function CSVUpload({ onSchoolsLoaded, setLoading, enableAddToDefa
       return;
     }
     
-    setLoading(true);
+    setIsLoading(true);
     processCsvData(csvHeaders, true);
   };
   
@@ -390,8 +391,9 @@ Washington Middle School,789 Learning Blvd,Springfield,IL,62702,District 186,39.
             <button 
               onClick={handleApplyMapping}
               className="btn-primary text-sm"
+              disabled={isLoading}
             >
-              Apply Mapping & Geocode
+              {isLoading ? 'Processing...' : 'Apply Mapping & Geocode'}
             </button>
           </div>
         </div>
@@ -421,10 +423,10 @@ Washington Middle School,789 Learning Blvd,Springfield,IL,62702,District 186,39.
             <div className="flex items-center gap-2 mb-3">
               <button 
                 onClick={handleSubmit}
-                disabled={!file}
-                className={`btn-primary ${!file ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!file || isLoading}
+                className={`btn-primary ${(!file || isLoading) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                Import & Geocode Schools
+                {isLoading ? 'Processing...' : 'Import & Geocode Schools'}
               </button>
               
               {enableAddToDefault && file && (
