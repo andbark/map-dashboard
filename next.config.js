@@ -6,7 +6,7 @@ const nextConfig = {
   },
   // Ensure Next.js uses relative paths for assets
   assetPrefix: './',
-  // Disable server-side features when exporting
+  // Enable server-side features for Firebase
   trailingSlash: true,
 }
 
