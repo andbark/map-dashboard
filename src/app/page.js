@@ -7,6 +7,7 @@ import SchoolList from '../components/SchoolList';
 import HubSpotIntegration from '../components/HubSpotIntegration';
 import AdminTools from '../components/AdminTools';
 import TabsContainer from '../components/TabsContainer';
+import DataManager from '../components/DataManager';
 import { saveSchools, getAllSchools, deleteAllSchools } from '../lib/database';
 
 // Dynamically import the Map component with no SSR to avoid window is not defined error
@@ -144,6 +145,10 @@ export default function Home() {
                 }}
               />
             ),
+          },
+          {
+            label: 'Data Management',
+            content: <DataManager />,
           },
           {
             label: 'HubSpot Integration',
