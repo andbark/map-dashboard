@@ -62,12 +62,30 @@ export default function Home() {
   }, []);
 
   const setViewportToSchools = (schools) => {
-    const schoolsWithCoords = schools.filter(s => s.latitude && s.longitude);
+    const schoolsWithCoords = schools.filter(s => 
+      s.latitude && 
+      s.longitude && 
+      !isNaN(parseFloat(s.latitude)) && 
+      !isNaN(parseFloat(s.longitude))
+    );
+    
+    console.log(`Schools with valid coordinates for map view: ${schoolsWithCoords.length} of ${schools.length}`);
+    
     if (schoolsWithCoords.length > 0) {
-      setViewport({
-        center: [parseFloat(schoolsWithCoords[0].latitude), parseFloat(schoolsWithCoords[0].longitude)],
-        zoom: 10
-      });
+      // Calculate bounds for all schools with coordinates
+      if (schoolsWithCoords.length === 1) {
+        // Just center on the single school
+        setViewport({
+          center: [parseFloat(schoolsWithCoords[0].latitude), parseFloat(schoolsWithCoords[0].longitude)],
+          zoom: 13
+        });
+      } else {
+        // For multiple schools, try to show all of them
+        setViewport({
+          center: [parseFloat(schoolsWithCoords[0].latitude), parseFloat(schoolsWithCoords[0].longitude)],
+          zoom: 10 // A bit zoomed out to show multiple schools
+        });
+      }
     }
   };
 
@@ -76,29 +94,53 @@ export default function Home() {
     setMessage({ text: 'Saving schools...', type: 'info' });
     
     console.log(`Saving ${newSchools.length} schools to database`);
+    console.log('School data sample:', newSchools.slice(0, 2));
+    
+    // Validate that schools have required data
+    const validSchools = newSchools.filter(school => 
+      school && 
+      school.name && 
+      school.address && 
+      school.city && 
+      school.state
+    );
+    
+    if (validSchools.length !== newSchools.length) {
+      console.warn(`Filtered out ${newSchools.length - validSchools.length} invalid schools`);
+    }
+    
+    if (validSchools.length === 0) {
+      setMessage({ text: 'No valid schools found to save', type: 'error' });
+      setOperationLoading(false);
+      return;
+    }
     
     try {
-      const result = await saveSchools(newSchools);
+      // Set schools in state early to show on map even if saving fails
+      setSchools(validSchools);
+      setSelectedSchool(null);
+      setViewportToSchools(validSchools);
+      
+      // Now try to save to database
+      const result = await saveSchools(validSchools);
       if (result.success) {
-        setSchools(newSchools);
-        setSelectedSchool(null);
-        setViewportToSchools(newSchools);
         setMessage({ 
-          text: `Successfully imported ${newSchools.length} schools! ${
-            newSchools.filter(s => s.latitude && s.longitude).length} schools have map coordinates.`, 
+          text: `Successfully imported ${validSchools.length} schools! ${
+            validSchools.filter(s => s.latitude && s.longitude).length} schools have map coordinates.`, 
           type: 'success' 
         });
       } else {
         setMessage({ 
-          text: `Failed to save schools: ${result.error || 'Unknown error'}`, 
-          type: 'error' 
+          text: `Warning: Schools are displayed but could not be saved to database: ${result.error || 'Unknown error'}`, 
+          type: 'warning' 
         });
         console.error('Error saving schools:', result.error);
       }
     } catch (error) {
+      // Keep schools in state even if saving fails
       setMessage({ 
-        text: `Failed to save schools: ${error.message || 'Unknown error'}`, 
-        type: 'error' 
+        text: `Warning: Schools are displayed but could not be saved to database: ${error.message || 'Unknown error'}`, 
+        type: 'warning' 
       });
       console.error('Error saving schools:', error);
     } finally {

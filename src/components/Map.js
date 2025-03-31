@@ -55,6 +55,47 @@ export default function Map({ schools = [], selectedSchool, viewport, setViewpor
     }
   }, [selectedSchool, setViewport]);
 
+  // Log any issues with coordinates
+  useEffect(() => {
+    if (schools.length > 0) {
+      console.log(`Map component received ${schools.length} schools`);
+      const schoolsWithCoords = schools.filter(school => 
+        school.latitude !== undefined && 
+        school.longitude !== undefined && 
+        !isNaN(parseFloat(school.latitude)) && 
+        !isNaN(parseFloat(school.longitude))
+      );
+      console.log(`Map will display ${schoolsWithCoords.length} schools with valid coordinates`);
+      
+      // Log the first few schools with coordinates for debugging
+      if (schoolsWithCoords.length > 0) {
+        console.log('Sample schools with coordinates:', 
+          schoolsWithCoords.slice(0, 3).map(s => ({
+            name: s.name,
+            lat: s.latitude,
+            lng: s.longitude
+          }))
+        );
+      }
+      
+      // Log any schools with invalid coordinates
+      const schoolsWithInvalidCoords = schools.filter(school => 
+        (school.latitude !== undefined || school.longitude !== undefined) &&
+        (isNaN(parseFloat(school.latitude)) || isNaN(parseFloat(school.longitude)))
+      );
+      if (schoolsWithInvalidCoords.length > 0) {
+        console.warn(`Found ${schoolsWithInvalidCoords.length} schools with invalid coordinates`);
+        console.warn('Sample invalid coordinates:', 
+          schoolsWithInvalidCoords.slice(0, 3).map(s => ({
+            name: s.name,
+            lat: s.latitude,
+            lng: s.longitude
+          }))
+        );
+      }
+    }
+  }, [schools]);
+
   if (!mapLoaded) {
     return (
       <div className="card h-[600px] flex items-center justify-center">
@@ -62,6 +103,14 @@ export default function Map({ schools = [], selectedSchool, viewport, setViewpor
       </div>
     );
   }
+
+  // Filter schools to only those with valid coordinates
+  const schoolsToDisplay = schools.filter(school => 
+    school.latitude !== undefined && 
+    school.longitude !== undefined && 
+    !isNaN(parseFloat(school.latitude)) && 
+    !isNaN(parseFloat(school.longitude))
+  );
 
   return (
     <div className="card p-0 overflow-hidden">
@@ -81,24 +130,34 @@ export default function Map({ schools = [], selectedSchool, viewport, setViewpor
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           
-          {schools
-            .filter(school => school.latitude && school.longitude)
-            .map((school, index) => (
+          {schoolsToDisplay.map((school, index) => {
+            // Ensure we're using floating point numbers for latitude and longitude
+            const lat = parseFloat(school.latitude);
+            const lng = parseFloat(school.longitude);
+            
+            // Double-check that coordinates are valid numbers
+            if (isNaN(lat) || isNaN(lng)) {
+              console.warn(`Invalid coordinates for school ${school.name}: [${school.latitude}, ${school.longitude}]`);
+              return null;
+            }
+            
+            return (
               <Marker 
                 key={`${school.name}-${index}`}
-                position={[parseFloat(school.latitude), parseFloat(school.longitude)]}
+                position={[lat, lng]}
                 icon={DefaultIcon}
               >
                 <Popup>
                   <div>
                     <h3 className="font-semibold">{school.name}</h3>
                     <p>{school.address}</p>
-                    <p>{school.city}, {school.state} {school.zip}</p>
+                    <p>{school.city}, {school.state} {school.zipCode || school.zip}</p>
                     {school.district && <p>District: {school.district}</p>}
                   </div>
                 </Popup>
               </Marker>
-            ))}
+            );
+          })}
         </MapContainer>
       </div>
     </div>

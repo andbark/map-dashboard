@@ -131,19 +131,11 @@ export default function CSVUpload({ onSchoolsLoaded, setLoading }) {
   const processFile = useCallback(async () => {
     if (!file) return;
     
-    // Check if required mappings are set
-    const requiredFields = ['School Name', 'Address', 'City', 'State'];
-    const missingMappings = requiredFields.filter(field => !columnMappings[field]);
-    
-    if (missingMappings.length > 0) {
-      setError(`Please map the following required fields: ${missingMappings.join(', ')}`);
-      return;
-    }
-    
     setIsProcessing(true);
     setLoading(true);
     setError(null);
-    setGeocodingProgress(0);
+    
+    console.log("Starting CSV file processing for:", file.name);
     
     try {
       Papa.parse(file, {
@@ -151,16 +143,29 @@ export default function CSVUpload({ onSchoolsLoaded, setLoading }) {
         skipEmptyLines: true,
         complete: async (results) => {
           try {
-            console.log('CSV Parse Results:', results);
+            console.log("CSV parsing complete. Raw data:", results.data.slice(0, 2)); // Log first two rows for sample
+            console.log("CSV headers:", results.meta.fields);
             
-            // Process each row using the column mappings
+            if (results.data.length === 0) {
+              throw new Error('The CSV file contains no data');
+            }
+            
+            if (Object.keys(columnMappings).some(field => !columnMappings[field] && ['School Name', 'Address', 'City', 'State'].includes(field))) {
+              throw new Error('Please map all required fields before uploading');
+            }
+            
+            // Process the data using the column mappings
             const schools = results.data
               .filter(row => {
-                // Filter out rows with missing required data
-                return row[columnMappings['School Name']] && 
-                       row[columnMappings['Address']] && 
-                       row[columnMappings['City']] && 
-                       row[columnMappings['State']];
+                // Filter out rows that don't have the required fields
+                return columnMappings['School Name'] && 
+                      row[columnMappings['School Name']] && 
+                      columnMappings['Address'] && 
+                      row[columnMappings['Address']] && 
+                      columnMappings['City'] && 
+                      row[columnMappings['City']] && 
+                      columnMappings['State'] && 
+                      row[columnMappings['State']];
               })
               .map((row, index) => ({
                 id: `temp-${index}`,
@@ -179,7 +184,8 @@ export default function CSVUpload({ onSchoolsLoaded, setLoading }) {
                   : undefined
               }));
 
-            console.log('Processed Schools:', schools);
+            console.log('Processed Schools Data Structure:', schools.slice(0, 2)); // Log first 2 schools
+            console.log('Total Schools After Processing:', schools.length);
             
             if (schools.length === 0) {
               throw new Error('No valid school data found in the CSV file');
@@ -187,25 +193,33 @@ export default function CSVUpload({ onSchoolsLoaded, setLoading }) {
 
             try {
               // Geocode schools that don't have coordinates
+              console.log('Starting geocoding process...');
+              const schoolsNeedingGeocoding = schools.filter(s => !s.latitude || !s.longitude).length;
+              console.log(`Schools needing geocoding: ${schoolsNeedingGeocoding} of ${schools.length}`);
+              
               const geocodedSchools = await geocodeSchools(schools, (progress) => {
                 setGeocodingProgress(progress);
+                console.log(`Geocoding progress: ${progress}%`);
               });
               
-              console.log('Geocoded Schools:', geocodedSchools);
+              console.log('Geocoded Schools:', geocodedSchools.slice(0, 2)); // Log first 2 geocoded schools
+              console.log(`Geocoding complete. Successfully geocoded: ${geocodedSchools.filter(s => s.latitude && s.longitude).length} of ${geocodedSchools.length}`);
               
               // Try to save to database
               try {
+                console.log('Calling onSchoolsLoaded with geocoded schools data...');
                 onSchoolsLoaded(geocodedSchools);
+                console.log('onSchoolsLoaded completed');
               } catch (saveError) {
-                console.error('Error saving schools to database:', saveError);
+                console.error('Error in onSchoolsLoaded callback:', saveError);
                 throw new Error(`Failed to save schools to database: ${saveError.message}`);
               }
             } catch (geocodeError) {
-              console.error('Error during geocoding:', geocodeError);
+              console.error('Error during geocoding process:', geocodeError);
               throw new Error(`Geocoding failed: ${geocodeError.message}`);
             }
           } catch (error) {
-            console.error('Error processing CSV:', error);
+            console.error('Error processing CSV data:', error);
             setError(error.message || 'Error processing CSV file');
           } finally {
             setIsProcessing(false);
@@ -214,14 +228,14 @@ export default function CSVUpload({ onSchoolsLoaded, setLoading }) {
           }
         },
         error: (error) => {
-          console.error('Error parsing CSV:', error);
+          console.error('Error parsing CSV file with Papa Parse:', error);
           setError('Error parsing CSV file');
           setIsProcessing(false);
           setLoading(false);
         }
       });
     } catch (error) {
-      console.error('Error processing file:', error);
+      console.error('General error during file processing:', error);
       setError(error.message || 'Error processing file');
       setIsProcessing(false);
       setLoading(false);
