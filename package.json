@@ -6,16 +6,21 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "create-admin": "node scripts/create-admin.js",
+    "generate-service-account": "node scripts/generate-service-account.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "firebase": "^11.5.0",
+    "firebase-admin": "^13.2.0",
     "leaflet": "^1.9.4",
     "next": "13.4.19",
+    "node-fetch": "^3.3.2",
     "papaparse": "^5.4.1",
+    "protobufjs": "^7.4.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-leaflet": "^4.2.1"

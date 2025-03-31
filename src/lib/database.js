@@ -1,5 +1,80 @@
-import { collection, addDoc, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, where, orderBy, writeBatch, doc, deleteDoc } from 'firebase/firestore';
 import { db } from './firebase';
+
+// Save schools to Firestore
+export async function saveSchools(schools) {
+  try {
+    // First, delete all existing schools
+    const schoolsRef = collection(db, 'schools');
+    const querySnapshot = await getDocs(schoolsRef);
+    const batch = writeBatch(db);
+    
+    querySnapshot.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+    
+    // Then add all new schools
+    schools.forEach((school) => {
+      const docRef = doc(schoolsRef);
+      batch.set(docRef, {
+        name: school.name,
+        address: school.address,
+        city: school.city,
+        state: school.state,
+        zip: school.zip,
+        district: school.district || null,
+        latitude: school.latitude || null,
+        longitude: school.longitude || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+    });
+    
+    await batch.commit();
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving schools:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Get all schools from Firestore
+export async function getAllSchools() {
+  try {
+    const schoolsRef = collection(db, 'schools');
+    const q = query(schoolsRef, orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    
+    const schools = [];
+    querySnapshot.forEach((doc) => {
+      schools.push({ id: doc.id, ...doc.data() });
+    });
+    
+    return { success: true, schools };
+  } catch (error) {
+    console.error('Error getting schools:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Delete all schools from Firestore
+export async function deleteAllSchools() {
+  try {
+    const schoolsRef = collection(db, 'schools');
+    const querySnapshot = await getDocs(schoolsRef);
+    const batch = writeBatch(db);
+    
+    querySnapshot.forEach((doc) => {
+      batch.delete(doc.ref);
+    });
+    
+    await batch.commit();
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting schools:', error);
+    return { success: false, error: error.message };
+  }
+}
 
 // Save file metadata to Firestore
 export async function saveFileMetadata(fileData) {
