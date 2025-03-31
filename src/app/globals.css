@@ -36,12 +36,41 @@ select option {
 /* Ensure the option dropdown is above other elements */
 .csv-mapping-container {
   position: relative;
+  isolation: isolate;
   z-index: 100;
 }
 
 .csv-mapping-select {
   position: relative;
   z-index: 100;
+}
+
+/* Portal for dropdown menus to prevent z-index issues */
+body > .dropdown-portal {
+  position: absolute;
+  z-index: 30000;
+}
+
+/* Fix for any overlays on the page */
+.overlay,
+.modal,
+.dialog,
+[role="dialog"] {
+  z-index: 25 !important;
+}
+
+/* Ensure our dropdowns always appear on top */
+.csv-mapping-container .custom-dropdown-open {
+  z-index: 30000 !important;
+}
+
+/* Fixed Safari dropdown issues */
+@media not all and (min-resolution:.001dpcm) {
+  @supports (-webkit-appearance:none) {
+    .csv-mapping-container {
+      transform: translateZ(0);
+    }
+  }
 }
 
 .btn-primary {

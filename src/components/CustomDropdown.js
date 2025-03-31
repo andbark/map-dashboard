@@ -12,6 +12,8 @@ export default function CustomDropdown({
   const [isOpen, setIsOpen] = useState(false);
   const [selectedValue, setSelectedValue] = useState(value || "");
   const dropdownRef = useRef(null);
+  const menuRef = useRef(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 0 });
 
   // Update our selected value when the prop changes
   useEffect(() => {
@@ -32,6 +34,18 @@ export default function CustomDropdown({
     };
   }, []);
 
+  // Handle positioning the menu to avoid being cut off
+  useEffect(() => {
+    if (isOpen && dropdownRef.current) {
+      const rect = dropdownRef.current.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom,
+        left: rect.left,
+        width: rect.width
+      });
+    }
+  }, [isOpen]);
+
   const handleSelect = (option) => {
     setSelectedValue(option);
     setIsOpen(false);
@@ -44,19 +58,19 @@ export default function CustomDropdown({
 
   return (
     <div 
-      className={`relative inline-block text-left w-full ${className}`} 
+      className={`relative inline-block text-left w-full z-super-high ${className}`} 
       ref={dropdownRef}
-      style={{ zIndex: 1000 }}
+      style={{ zIndex: 10000 }}
       data-custom-dropdown="true"
     >
-      <div>
+      <div style={{ zIndex: 10001 }}>
         <button
           type="button"
           className="inline-flex justify-between w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           onClick={() => setIsOpen(!isOpen)}
           aria-haspopup="true"
           aria-expanded={isOpen}
-          style={{ zIndex: 1001 }}
+          style={{ zIndex: 10001 }}
         >
           {selectedLabel}
           <svg className="-mr-1 ml-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -67,11 +81,19 @@ export default function CustomDropdown({
 
       {isOpen && (
         <div 
-          className="origin-top-right absolute right-0 mt-2 w-full rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none max-h-60 overflow-y-auto"
+          ref={menuRef}
+          className="origin-top-right absolute right-0 mt-2 w-full rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none max-h-60 overflow-y-auto custom-dropdown-open"
           role="menu"
           aria-orientation="vertical"
           aria-labelledby="options-menu"
-          style={{ zIndex: 1002 }}
+          style={{ 
+            zIndex: 10002,
+            position: 'fixed',
+            top: menuPosition.top + 'px',
+            left: menuPosition.left + 'px',
+            width: menuPosition.width + 'px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+          }}
         >
           <div className="py-1" role="none">
             {options.map((option) => (

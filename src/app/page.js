@@ -235,7 +235,7 @@ export default function Home() {
       
       {/* Operation Loading Overlay - only shown for user-initiated operations */}
       {operationLoading && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-40">
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center" style={{ zIndex: 30 }}>
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
             <div className="flex items-center justify-center mb-4">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>

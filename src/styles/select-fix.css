@@ -2,7 +2,7 @@
 .csv-mapping-select {
   /* Make sure select elements render on top */
   position: relative;
-  z-index: 1000 !important;
+  z-index: 9999 !important;
   /* Force native appearance in Firefox */
   -moz-appearance: menulist !important;
   /* Force native appearance in Chrome and Safari */
@@ -16,12 +16,13 @@
   min-height: 30px;
   background-color: white;
   color: #333;
+  z-index: 9999 !important;
 }
 
 /* Set relative z-indices for parent containers */
 .csv-mapping-parent {
   position: relative;
-  z-index: 999;
+  z-index: 9998;
 }
 
 /* Target the popup menu of select elements */
@@ -29,6 +30,7 @@
   /* Force 3D rendering to fix Safari z-index issues */
   transform: translateZ(0);
   background-color: white;
+  z-index: 9999 !important;
 }
 
 /* Ensure any overlays don't block the dropdown */
@@ -50,7 +52,7 @@ body::before {
   background: white;
   border: 1px solid #ccc;
   border-radius: 4px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
   max-height: 300px;
   overflow-y: auto;
 }
@@ -67,6 +69,12 @@ body::before {
   .csv-mapping-select {
     overflow: visible !important;
   }
+  
+  /* Force Firefox to show options above everything */
+  option {
+    position: relative;
+    z-index: 10000 !important;
+  }
 }
 
 /* Additional fixes for Safari */
@@ -74,6 +82,12 @@ body::before {
   @supports (-webkit-appearance:none) {
     .csv-mapping-select {
       -webkit-transform: translateZ(0);
+      z-index: 10000 !important;
+    }
+    
+    /* Force Safari to show options above everything */
+    select option {
+      z-index: 10000 !important;
     }
   }
 }
@@ -83,23 +97,53 @@ body::before {
   .csv-mapping-container {
     isolation: isolate;
   }
+  
+  /* Ensure select elements are visible */
+  select {
+    position: relative;
+    z-index: 10000 !important;
+  }
 }
 
 /* Enhanced visibility for our custom dropdown component */
 [data-custom-dropdown] {
-  position: relative;
-  isolation: isolate;
-  z-index: 9999 !important;
+  position: relative !important;
+  isolation: isolate !important;
+  z-index: 10000 !important;
 }
 
-/* Prevent any other overlays from showing above our select */
-body::after {
+[data-custom-dropdown] > div {
+  position: relative !important;
+  z-index: 10001 !important;
+}
+
+[data-custom-dropdown] [role="menu"] {
+  position: relative !important;
+  z-index: 10002 !important;
+}
+
+/* Force the custom dropdown menu to appear on top of all elements */
+.custom-dropdown-open {
+  position: absolute !important;
+  top: auto !important;
+  left: auto !important;
+  z-index: 10000 !important;
+}
+
+/* Remove any overlay elements that might be covering the dropdown */
+.csv-mapping-container::after {
   content: "";
-  display: none;
-  position: fixed;
+  position: absolute;
   top: 0;
+  left: 0;
   right: 0;
   bottom: 0;
-  left: 0;
-  z-index: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Enhanced position for dropdown to appear above overlay */
+.z-super-high {
+  z-index: 20000 !important;
+  position: relative !important;
 } 

@@ -315,39 +315,37 @@ export default function CSVUpload({ onSchoolsLoaded, setLoading }) {
       
       {/* Column Mapping UI */}
       {showColumnMapping && csvHeaders.length > 0 && (
-        <div className="csv-mapping-container" style={{ position: 'relative', zIndex: 200 }}>
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-4">Map CSV Columns</h3>
-            {['School Name', 'Address', 'City', 'State'].map((field) => (
-              <div key={field} className="mb-4 flex items-center">
-                <label className="w-40 font-medium">{field}: (required)</label>
-                <CustomDropdown
-                  value={columnMappings[field] || ''}
-                  onChange={(value) => handleMappingChange(field, value)}
-                  options={[
-                    { value: '', label: 'Select column' },
-                    ...csvHeaders.map(header => ({ value: header, label: header }))
-                  ]}
-                  className="w-64"
-                />
-              </div>
-            ))}
-            
-            {['School District', 'Zip Code', 'Latitude', 'Longitude'].map((field) => (
-              <div key={field} className="mb-4 flex items-center">
-                <label className="w-40 font-medium">{field}:</label>
-                <CustomDropdown
-                  value={columnMappings[field] || ''}
-                  onChange={(value) => handleMappingChange(field, value)}
-                  options={[
-                    { value: '', label: 'Select column' },
-                    ...csvHeaders.map(header => ({ value: header, label: header }))
-                  ]}
-                  className="w-64"
-                />
-              </div>
-            ))}
-          </div>
+        <div className="mb-6 bg-white rounded-lg p-6 border border-gray-200 shadow-sm csv-mapping-container z-super-high" style={{ position: 'relative', zIndex: 20000 }}>
+          <h3 className="text-lg font-semibold mb-4">Map CSV Columns</h3>
+          {['School Name', 'Address', 'City', 'State'].map((field) => (
+            <div key={field} className="mb-4 flex items-center csv-mapping-parent">
+              <label className="w-40 font-medium">{field}: (required)</label>
+              <CustomDropdown
+                value={columnMappings[field] || ''}
+                onChange={(value) => handleMappingChange(field, value)}
+                options={[
+                  { value: '', label: 'Select column' },
+                  ...csvHeaders.map(header => ({ value: header, label: header }))
+                ]}
+                className="w-64"
+              />
+            </div>
+          ))}
+          
+          {['School District', 'Zip Code', 'Latitude', 'Longitude'].map((field) => (
+            <div key={field} className="mb-4 flex items-center csv-mapping-parent">
+              <label className="w-40 font-medium">{field}:</label>
+              <CustomDropdown
+                value={columnMappings[field] || ''}
+                onChange={(value) => handleMappingChange(field, value)}
+                options={[
+                  { value: '', label: 'Select column' },
+                  ...csvHeaders.map(header => ({ value: header, label: header }))
+                ]}
+                className="w-64"
+              />
+            </div>
+          ))}
           
           {parsedData.length > 0 && (
             <div className="mt-4">
