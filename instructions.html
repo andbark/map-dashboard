@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map Dashboard - Static Version Instructions</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1, h2 {
+            color: #4f46e5;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-top: 20px;
+        }
+        ol {
+            margin-left: 20px;
+        }
+        li {
+            margin-bottom: 15px;
+        }
+        .note {
+            background-color: #f9fafb;
+            padding: 15px;
+            border-left: 4px solid #4f46e5;
+            margin: 20px 0;
+        }
+        code {
+            background-color: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>School Photography Client Map Dashboard</h1>
+        <h2>Static Version Instructions</h2>
+        
+        <p>This is the static (offline) version of the Map Dashboard application. You can run it locally on your computer without needing any internet connection or Vercel account.</p>
+        
+        <h3>How to Use:</h3>
+        
+        <ol>
+            <li><strong>Extract the zip file</strong> (map-dashboard-static.zip) to a folder on your computer.</li>
+            <li><strong>Open the index.html file</strong> in your web browser (Chrome, Firefox, Safari, or Edge).</li>
+            <li><strong>Use the dashboard</strong> to:
+                <ul>
+                    <li>Upload CSV files with school data</li>
+                    <li>Map columns if your CSV has different header names</li>
+                    <li>View schools on the interactive map</li>
+                    <li>Save data for future use</li>
+                </ul>
+            </li>
+        </ol>
+        
+        <div class="note">
+            <p><strong>Note:</strong> Since this is running locally in your browser, all data will be saved to your browser's local storage. This means:</p>
+            <ul>
+                <li>Data is only accessible on the device and browser you're using</li>
+                <li>Clearing browser data will erase any saved schools</li>
+                <li>You can export/save your data if needed</li>
+            </ul>
+        </div>
+        
+        <h3>Features:</h3>
+        <ul>
+            <li><strong>Geocoding:</strong> Automatically converts addresses to map coordinates</li>
+            <li><strong>Column Mapping:</strong> Allows flexibility with CSV columns that don't match standard names</li>
+            <li><strong>Local Storage:</strong> Saves imported schools data for future sessions</li>
+            <li><strong>Interactive Map:</strong> View and interact with school locations</li>
+        </ul>
+        
+        <p>Enjoy using your Map Dashboard!</p>
+    </div>
+</body>
+</html> 

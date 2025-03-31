@@ -1,0 +1,154 @@
+{
+  "schools": [
+    {
+      "name": "Lincoln High School",
+      "address": "4400 Interlake Ave N",
+      "city": "Seattle",
+      "state": "WA",
+      "zip": "98103",
+      "district": "Seattle Public Schools",
+      "latitude": "47.6588",
+      "longitude": "-122.3425"
+    },
+    {
+      "name": "Roosevelt High School",
+      "address": "1410 NE 66th St",
+      "city": "Seattle",
+      "state": "WA",
+      "zip": "98115",
+      "district": "Seattle Public Schools",
+      "latitude": "47.6760",
+      "longitude": "-122.3125"
+    },
+    {
+      "name": "Garfield High School",
+      "address": "400 23rd Ave",
+      "city": "Seattle",
+      "state": "WA",
+      "zip": "98122",
+      "district": "Seattle Public Schools",
+      "latitude": "47.6071",
+      "longitude": "-122.3021"
+    },
+    {
+      "name": "Stuyvesant High School",
+      "address": "345 Chambers St",
+      "city": "New York",
+      "state": "NY",
+      "zip": "10282", 
+      "district": "New York City Department of Education",
+      "latitude": "40.7178",
+      "longitude": "-74.0137"
+    },
+    {
+      "name": "Brooklyn Technical High School",
+      "address": "29 Fort Greene Pl",
+      "city": "Brooklyn",
+      "state": "NY",
+      "zip": "11217",
+      "district": "New York City Department of Education",
+      "latitude": "40.6891",
+      "longitude": "-73.9766"
+    },
+    {
+      "name": "Bronx High School of Science",
+      "address": "75 W 205th St",
+      "city": "Bronx",
+      "state": "NY",
+      "zip": "10468",
+      "district": "New York City Department of Education",
+      "latitude": "40.8777",
+      "longitude": "-73.8931"
+    },
+    {
+      "name": "Walter Payton College Prep",
+      "address": "1034 N Wells St",
+      "city": "Chicago",
+      "state": "IL",
+      "zip": "60610",
+      "district": "Chicago Public Schools",
+      "latitude": "41.9010",
+      "longitude": "-87.6344"
+    },
+    {
+      "name": "Whitney M. Young Magnet High School",
+      "address": "211 S Laflin St",
+      "city": "Chicago",
+      "state": "IL",
+      "zip": "60607",
+      "district": "Chicago Public Schools",
+      "latitude": "41.8784",
+      "longitude": "-87.6642"
+    },
+    {
+      "name": "Jones College Prep",
+      "address": "700 S State St",
+      "city": "Chicago",
+      "state": "IL",
+      "zip": "60605",
+      "district": "Chicago Public Schools",
+      "latitude": "41.8727",
+      "longitude": "-87.6277"
+    },
+    {
+      "name": "Beverly Hills High School",
+      "address": "241 Moreno Dr",
+      "city": "Beverly Hills",
+      "state": "CA",
+      "zip": "90212",
+      "district": "Beverly Hills Unified School District",
+      "latitude": "34.0634",
+      "longitude": "-118.4144"
+    },
+    {
+      "name": "Thomas Jefferson High School for Science and Technology",
+      "address": "6560 Braddock Rd",
+      "city": "Alexandria",
+      "state": "VA",
+      "zip": "22312",
+      "district": "Fairfax County Public Schools",
+      "latitude": "38.8193",
+      "longitude": "-77.1680"
+    },
+    {
+      "name": "Boston Latin School",
+      "address": "78 Avenue Louis Pasteur",
+      "city": "Boston",
+      "state": "MA",
+      "zip": "02115",
+      "district": "Boston Public Schools",
+      "latitude": "42.3386",
+      "longitude": "-71.1018"
+    },
+    {
+      "name": "Pine View School",
+      "address": "1 Python Path",
+      "city": "Osprey",
+      "state": "FL",
+      "zip": "34229",
+      "district": "Sarasota County Schools",
+      "latitude": "27.1960",
+      "longitude": "-82.4739"
+    },
+    {
+      "name": "Oxford Academy",
+      "address": "5172 Orange Ave",
+      "city": "Cypress",
+      "state": "CA",
+      "zip": "90630",
+      "district": "Anaheim Union High School District",
+      "latitude": "33.8278",
+      "longitude": "-118.0428"
+    },
+    {
+      "name": "Townsend Harris High School",
+      "address": "149-11 Melbourne Ave",
+      "city": "Flushing",
+      "state": "NY",
+      "zip": "11367",
+      "district": "New York City Department of Education",
+      "latitude": "40.7377",
+      "longitude": "-73.8221"
+    }
+  ]
+} 
