@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { testFirebaseConnection } from '../utils/firebaseTest';
 
 export default function AdminTools({ onSchoolsLoaded, setLoading }) {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
+  const [testResult, setTestResult] = useState(null);
   
   // In a real app, use more secure authentication
   const correctPassword = 'admin123'; // This would never be hardcoded in a real app
@@ -14,8 +16,27 @@ export default function AdminTools({ onSchoolsLoaded, setLoading }) {
     e.preventDefault();
     if (adminPassword === correctPassword) {
       setAuthenticated(true);
+      setTestResult(null);
     } else {
       alert('Incorrect password');
+    }
+  };
+
+  const handleTestConnection = async () => {
+    setLoading(true);
+    setTestResult(null);
+    
+    try {
+      const result = await testFirebaseConnection();
+      setTestResult(result);
+    } catch (error) {
+      setTestResult({
+        success: false,
+        message: 'Test failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -87,26 +108,21 @@ export default function AdminTools({ onSchoolsLoaded, setLoading }) {
       ) : (
         <div>
           {!authenticated ? (
-            <form onSubmit={handleAuthenticate} className="mb-4">
-              <div className="mb-3">
-                <label htmlFor="admin-password" className="block text-sm font-medium text-gray-700 mb-1">
+            <form onSubmit={handleAuthenticate} className="space-y-4">
+              <div>
+                <label htmlFor="adminPassword" className="block text-sm font-medium text-gray-700">
                   Admin Password
                 </label>
                 <input
                   type="password"
-                  id="admin-password"
+                  id="adminPassword"
                   value={adminPassword}
                   onChange={(e) => setAdminPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  placeholder="Enter admin password"
-                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                 />
               </div>
-              <button
-                type="submit"
-                className="btn-primary w-full"
-              >
-                Login as Admin
+              <button type="submit" className="btn-primary w-full">
+                Login
               </button>
             </form>
           ) : (
@@ -115,6 +131,28 @@ export default function AdminTools({ onSchoolsLoaded, setLoading }) {
                 <p className="text-sm text-green-700">
                   You are logged in as an administrator. You can now manage the shared school database.
                 </p>
+              </div>
+              
+              <div className="p-4 border border-indigo-100 rounded-md">
+                <h3 className="text-sm font-semibold text-indigo-800 mb-2">Firebase Connection Test</h3>
+                <button
+                  onClick={handleTestConnection}
+                  className="btn-secondary w-full mb-2"
+                >
+                  Test Firebase Connection
+                </button>
+                {testResult && (
+                  <div className={`mt-2 p-2 rounded text-sm ${
+                    testResult.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                  }`}>
+                    {testResult.message}
+                    {testResult.error && (
+                      <div className="mt-1 text-xs">
+                        Error: {testResult.error}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               
               <div className="p-4 border border-indigo-100 rounded-md">
@@ -150,6 +188,7 @@ export default function AdminTools({ onSchoolsLoaded, setLoading }) {
               setShowAdminPanel(false);
               setAuthenticated(false);
               setAdminPassword('');
+              setTestResult(null);
             }}
             className="btn-secondary mt-4 w-full"
           >
