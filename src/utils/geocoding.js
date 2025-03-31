@@ -1,7 +1,4 @@
-// Re-export from geocoding.ts
-export { geocodeAddress, geocodeSchools } from './geocoding.ts'; 
-
-// JavaScript wrapper for geocoding.ts to ensure proper module imports
+// Import the TypeScript geocoding function
 import { geocodeAddress } from './geocoding.ts';
 
 /**
@@ -94,4 +91,7 @@ export async function geocodeSchools(schools, onProgress) {
   
   console.log(`Geocoding complete. Successfully geocoded ${successCount} of ${totalSchools} schools.`);
   return geocodedSchools;
-} 
+}
+
+// Also export the geocodeAddress function directly for convenience
+export { geocodeAddress }; 

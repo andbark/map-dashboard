@@ -115,6 +115,11 @@ export default function Map({ schools = [], selectedSchool, viewport, setViewpor
   return (
     <div className="card p-0 overflow-hidden">
       <div className="h-[600px] w-full">
+        {/* Debug info */}
+        <div className="absolute top-2 right-2 z-10 bg-white p-2 rounded shadow text-xs">
+          Showing {schoolsToDisplay.length} of {schools.length} schools
+        </div>
+        
         <MapContainer
           center={viewport?.center || defaultCenter}
           zoom={viewport?.zoom || defaultZoom}

@@ -91,9 +91,9 @@ export default function Home() {
 
   const handleSchoolsLoaded = async (newSchools) => {
     setOperationLoading(true);
-    setMessage({ text: 'Saving schools...', type: 'info' });
+    setMessage({ text: 'Processing schools...', type: 'info' });
     
-    console.log(`Saving ${newSchools.length} schools to database`);
+    console.log(`Processing ${newSchools.length} schools`);
     console.log('School data sample:', newSchools.slice(0, 2));
     
     // Validate that schools have required data
@@ -110,23 +110,32 @@ export default function Home() {
     }
     
     if (validSchools.length === 0) {
-      setMessage({ text: 'No valid schools found to save', type: 'error' });
+      setMessage({ text: 'No valid schools found to display', type: 'error' });
       setOperationLoading(false);
       return;
     }
+
+    // Ensure schools have proper data types for coordinates
+    const processedSchools = validSchools.map(school => ({
+      ...school,
+      latitude: school.latitude ? parseFloat(school.latitude) : undefined,
+      longitude: school.longitude ? parseFloat(school.longitude) : undefined
+    }));
+    
+    // Update state to display the schools on the map immediately
+    setSchools(processedSchools);
+    setSelectedSchool(null);
+    setViewportToSchools(processedSchools);
+    
+    // Then try to save to Firebase (this happens in background)
+    setMessage({ text: 'Saving schools to database...', type: 'info' });
     
     try {
-      // Set schools in state early to show on map even if saving fails
-      setSchools(validSchools);
-      setSelectedSchool(null);
-      setViewportToSchools(validSchools);
-      
-      // Now try to save to database
-      const result = await saveSchools(validSchools);
+      const result = await saveSchools(processedSchools);
       if (result.success) {
         setMessage({ 
-          text: `Successfully imported ${validSchools.length} schools! ${
-            validSchools.filter(s => s.latitude && s.longitude).length} schools have map coordinates.`, 
+          text: `Successfully imported ${processedSchools.length} schools! ${
+            processedSchools.filter(s => s.latitude && s.longitude).length} schools have map coordinates.`, 
           type: 'success' 
         });
       } else {
@@ -138,11 +147,11 @@ export default function Home() {
       }
     } catch (error) {
       // Keep schools in state even if saving fails
+      console.error('Error saving schools:', error);
       setMessage({ 
         text: `Warning: Schools are displayed but could not be saved to database: ${error.message || 'Unknown error'}`, 
         type: 'warning' 
       });
-      console.error('Error saving schools:', error);
     } finally {
       setOperationLoading(false);
     }

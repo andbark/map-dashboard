@@ -41,7 +41,7 @@ export async function geocodeAddress(address: string): Promise<[number, number] 
 }
 
 // Function to batch geocode a list of schools
-export async function geocodeSchools(
+export async function geocodeSchoolsTS(
   schools: School[],
   onProgress?: (progress: number) => void
 ): Promise<School[]> {
