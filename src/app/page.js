@@ -29,6 +29,7 @@ export default function Home() {
   const [dataLoading, setDataLoading] = useState(true);
   const [operationLoading, setOperationLoading] = useState(false);
   const [message, setMessage] = useState(null);
+  const [firebaseTestResult, setFirebaseTestResult] = useState(null);
   const [viewport, setViewport] = useState({
     center: [39.8283, -98.5795], // Center of US
     zoom: 4
@@ -186,6 +187,52 @@ export default function Home() {
     }
   };
 
+  // Function to test Firebase connection
+  const testFirebaseConnection = async () => {
+    try {
+      setOperationLoading(true);
+      setMessage({ text: 'Testing Firebase connection...', type: 'info' });
+      
+      // Test reading from schools collection
+      const result = await getAllSchools();
+      
+      if (result.success) {
+        setMessage({ 
+          text: `Firebase connection successful! Found ${result.schools.length} schools in database.`, 
+          type: 'success' 
+        });
+        setFirebaseTestResult({
+          timestamp: new Date().toLocaleTimeString(),
+          schoolCount: result.schools.length,
+          success: true
+        });
+      } else {
+        setMessage({ 
+          text: `Firebase connection failed: ${result.error || 'Unknown error'}`, 
+          type: 'error' 
+        });
+        setFirebaseTestResult({
+          timestamp: new Date().toLocaleTimeString(),
+          error: result.error,
+          success: false
+        });
+      }
+    } catch (error) {
+      console.error('Firebase test error:', error);
+      setMessage({ 
+        text: `Firebase connection failed: ${error.message || 'Unknown error'}`, 
+        type: 'error' 
+      });
+      setFirebaseTestResult({
+        timestamp: new Date().toLocaleTimeString(),
+        error: error.message,
+        success: false
+      });
+    } finally {
+      setOperationLoading(false);
+    }
+  };
+
   // Skeleton loader for schools list
   const SchoolsListSkeleton = () => (
     <div className="animate-pulse">
@@ -197,92 +244,73 @@ export default function Home() {
   );
 
   return (
-    <main className="container mx-auto px-4 py-8">
+    <main className="container mx-auto px-4 py-12">
+      <h1 className="text-3xl font-bold mb-8 text-center">School Map Dashboard</h1>
+      
       {message && (
-        <div className={`mb-4 p-4 rounded-lg ${
-          message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' :
-          message.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' :
-          message.type === 'warning' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
-          'bg-blue-50 text-blue-700 border border-blue-200'
+        <div className={`mb-6 p-4 rounded-lg ${
+          message.type === 'success' ? 'bg-green-100 text-green-800' : 
+          message.type === 'error' ? 'bg-red-100 text-red-800' : 
+          message.type === 'warning' ? 'bg-yellow-100 text-yellow-800' : 
+          'bg-blue-100 text-blue-800'
         }`}>
           {message.text}
-          {message.type === 'warning' && 
-            <button 
-              className="ml-2 text-sm underline" 
-              onClick={() => setMessage(null)}
-            >
-              Dismiss
-            </button>
-          }
         </div>
       )}
       
-      {/* Initial loading indicator - non-blocking */}
-      {dataLoading && (
-        <div className="mb-4 bg-blue-50 p-3 rounded-lg flex items-center">
-          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500 mr-3"></div>
-          <span className="text-blue-700">Loading school data...</span>
-        </div>
-      )}
-      
-      <TabsContainer
-        tabs={[
-          {
-            label: 'Map View',
-            content: (
-              <div className="space-y-6">
-                <div className="relative">
-                  <Map
-                    schools={schools}
-                    selectedSchool={selectedSchool}
-                    onSchoolSelect={setSelectedSchool}
-                    viewport={viewport}
-                    onViewportChange={setViewport}
-                  />
-                </div>
-                
-                {dataLoading ? (
-                  <SchoolsListSkeleton />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <div className="card mb-6">
+            <h2 className="text-xl font-semibold mb-4">Upload Schools</h2>
+            <CSVUpload 
+              onSchoolsLoaded={handleSchoolsLoaded} 
+              setLoading={setOperationLoading}
+            />
+          </div>
+          
+          <Map 
+            schools={schools} 
+            selectedSchool={selectedSchool}
+            viewport={viewport}
+            setViewport={setViewport}
+          />
+          
+          {/* Firebase Test Section */}
+          <div className="card mt-6 p-4 border border-gray-200 rounded-lg shadow-sm">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Firebase Connection Test</h2>
+              <button
+                onClick={testFirebaseConnection}
+                className="btn-primary text-sm py-1 px-3"
+                disabled={operationLoading}
+              >
+                Test Connection
+              </button>
+            </div>
+            
+            {firebaseTestResult && (
+              <div className={`p-3 rounded-lg text-sm ${
+                firebaseTestResult.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+              }`}>
+                <p><strong>Time:</strong> {firebaseTestResult.timestamp}</p>
+                {firebaseTestResult.success ? (
+                  <p><strong>Result:</strong> Connected successfully! Found {firebaseTestResult.schoolCount} schools.</p>
                 ) : (
-                  <SchoolList
-                    schools={schools}
-                    selectedSchool={selectedSchool}
-                    onSchoolSelect={setSelectedSchool}
-                  />
+                  <p><strong>Error:</strong> {firebaseTestResult.error || 'Unknown error'}</p>
                 )}
               </div>
-            ),
-          },
-          {
-            label: 'Upload CSV',
-            content: (
-              <CSVUpload
-                onSchoolsLoaded={handleSchoolsLoaded}
-                setLoading={setOperationLoading}
-              />
-            ),
-          },
-          {
-            label: 'Data Management',
-            content: (
-              <DataManager
-                schools={schools}
-                onSchoolsLoaded={handleSchoolsLoaded}
-                onSchoolsDeleted={handleSchoolsDeleted}
-                isLoading={dataLoading}
-              />
-            ),
-          },
-          {
-            label: 'HubSpot Integration',
-            content: <HubSpotIntegration schools={schools} onSchoolsLoaded={handleSchoolsLoaded} setLoading={setOperationLoading} />,
-          },
-          {
-            label: 'Admin Tools',
-            content: <AdminTools onSchoolsDeleted={handleSchoolsDeleted} />,
-          },
-        ]}
-      />
+            )}
+          </div>
+        </div>
+        
+        <div>
+          <SchoolList 
+            schools={schools} 
+            selectedSchool={selectedSchool}
+            setSelectedSchool={setSelectedSchool}
+          />
+        </div>
+      </div>
       
       {/* Operation Loading Overlay - only shown for user-initiated operations */}
       {operationLoading && (
