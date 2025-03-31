@@ -1,5 +1,5 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { getAllFiles } from '@/lib/database';
+import { getAllFiles } from '../lib/database';
 
 const FileList = forwardRef((props, ref) => {
   const [files, setFiles] = useState([]);

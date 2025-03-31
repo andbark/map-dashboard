@@ -1,5 +1,5 @@
-import FileUpload from '@/components/FileUpload';
-import FileList from '@/components/FileList';
+import FileUpload from '../components/FileUpload';
+import FileList from '../components/FileList';
 import { useRef } from 'react';
 
 export default function FilesPage() {

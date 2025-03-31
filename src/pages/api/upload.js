@@ -1,8 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { uploadFile } from '@/lib/fileUpload';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { uploadFile } from '../../lib/fileUpload';
 
 export const config = {
   api: {
@@ -21,25 +18,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ message: 'No file provided' });
     }
 
-    // Upload to Firebase Storage
     const uploadResult = await uploadFile(file);
     
     if (!uploadResult.success) {
       return res.status(500).json({ message: 'Failed to upload file' });
     }
 
-    // Save file information to database
-    const savedFile = await prisma.file.create({
-      data: {
-        filename: uploadResult.filename,
-        url: uploadResult.url,
-        type: file.type,
-        size: file.size,
-        uploadedBy: req.body.userId || 'anonymous', // You can replace this with actual user ID
-      },
-    });
-
-    return res.status(200).json(savedFile);
+    return res.status(200).json(uploadResult);
   } catch (error) {
     console.error('Error in upload handler:', error);
     return res.status(500).json({ message: 'Internal server error' });

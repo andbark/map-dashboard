@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { uploadFile } from '@/lib/fileUpload';
+import { uploadFile } from '../lib/fileUpload';
 
 export default function FileUpload({ onUploadSuccess }) {
   const [isDragging, setIsDragging] = useState(false);

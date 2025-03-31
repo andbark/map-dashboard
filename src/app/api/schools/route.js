@@ -1,16 +1,19 @@
 import { NextResponse } from 'next/server';
-import prisma from '../../../../lib/prisma';
+import { db } from '../../../lib/firebase';
+import { collection, getDocs } from 'firebase/firestore';
 
 // GET route to fetch all schools
 export async function GET() {
   try {
-    const schools = await prisma.school.findMany({
-      orderBy: {
-        name: 'asc',
-      },
+    const schoolsRef = collection(db, 'schools');
+    const querySnapshot = await getDocs(schoolsRef);
+    
+    const schools = [];
+    querySnapshot.forEach((doc) => {
+      schools.push({ id: doc.id, ...doc.data() });
     });
     
-    return NextResponse.json({ schools });
+    return NextResponse.json(schools);
   } catch (error) {
     console.error('Error fetching schools:', error);
     return NextResponse.json(
