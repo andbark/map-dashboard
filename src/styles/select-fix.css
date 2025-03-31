@@ -1,0 +1,105 @@
+/* Fix for dropdown visibility in Firefox, Chrome, and Safari */
+.csv-mapping-select {
+  /* Make sure select elements render on top */
+  position: relative;
+  z-index: 1000 !important;
+  /* Force native appearance in Firefox */
+  -moz-appearance: menulist !important;
+  /* Force native appearance in Chrome and Safari */
+  -webkit-appearance: menulist !important;
+  appearance: menulist !important;
+}
+
+/* Style dropdown options */
+.csv-mapping-select option {
+  padding: 10px;
+  min-height: 30px;
+  background-color: white;
+  color: #333;
+}
+
+/* Set relative z-indices for parent containers */
+.csv-mapping-parent {
+  position: relative;
+  z-index: 999;
+}
+
+/* Target the popup menu of select elements */
+.csv-mapping-container select {
+  /* Force 3D rendering to fix Safari z-index issues */
+  transform: translateZ(0);
+  background-color: white;
+}
+
+/* Ensure any overlays don't block the dropdown */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 998;
+  pointer-events: none;
+}
+
+/* Add more specificity for custom dropdowns */
+.custom-dropdown-menu {
+  position: absolute;
+  z-index: 9999 !important;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* Ensure custom dropdowns are above everything */
+[role="listbox"],
+[role="menu"],
+[role="dialog"] {
+  z-index: 9999 !important;
+}
+
+/* Fix for Firefox specifically */
+@-moz-document url-prefix() {
+  .csv-mapping-select {
+    overflow: visible !important;
+  }
+}
+
+/* Additional fixes for Safari */
+@media not all and (min-resolution:.001dpcm) {
+  @supports (-webkit-appearance:none) {
+    .csv-mapping-select {
+      -webkit-transform: translateZ(0);
+    }
+  }
+}
+
+/* Fix for Webkit browsers (Chrome, Safari) */
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+  .csv-mapping-container {
+    isolation: isolate;
+  }
+}
+
+/* Enhanced visibility for our custom dropdown component */
+[data-custom-dropdown] {
+  position: relative;
+  isolation: isolate;
+  z-index: 9999 !important;
+}
+
+/* Prevent any other overlays from showing above our select */
+body::after {
+  content: "";
+  display: none;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 0;
+} 

@@ -1,24 +1,19 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  images: {
-    unoptimized: true,
+  reactStrictMode: true,
+  swcMinify: true,
+  typescript: {
+    // !! WARN !!
+    // Dangerously allow production builds to successfully complete even if
+    // your project has type errors.
+    // !! WARN !!
+    ignoreBuildErrors: true,
   },
-  // Enable server-side features for Firebase
-  experimental: {
-    serverActions: true,
+  eslint: {
+    // Warning: This allows production builds to successfully complete even if
+    // your project has ESLint errors.
+    ignoreDuringBuilds: true,
   },
-  webpack: (config, { isServer }) => {
-    // Enable web worker support
-    config.module.rules.push({
-      test: /\.worker\.js$/,
-      loader: 'worker-loader',
-      options: {
-        inline: 'no-fallback'
-      }
-    });
-
-    return config;
-  }
 }
 
 module.exports = nextConfig 

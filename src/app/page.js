@@ -26,35 +26,35 @@ const Map = dynamic(() => import('../components/Map'), {
 export default function Home() {
   const [schools, setSchools] = useState([]);
   const [selectedSchool, setSelectedSchool] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [operationLoading, setOperationLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [viewport, setViewport] = useState({
     center: [39.8283, -98.5795], // Center of US
     zoom: 4
   });
 
-  // Load schools from database on initial load
+  // Load schools from database in background without blocking UI
   useEffect(() => {
     const loadInitialData = async () => {
-      setLoading(true);
-      setMessage({ text: 'Loading schools...', type: 'info' });
-      
       try {
         const result = await getAllSchools();
         if (result.success) {
           setSchools(result.schools);
           setViewportToSchools(result.schools);
-          setMessage({ text: `Loaded ${result.schools.length} schools`, type: 'success' });
+          if (result.schools.length > 0) {
+            setMessage({ text: `Loaded ${result.schools.length} schools`, type: 'success' });
+          }
         } else {
-          setMessage({ text: 'Error loading schools', type: 'error' });
           console.error('Error loading schools:', result.error);
+          setMessage({ text: 'Error loading schools. You can still use the app, but data may not be available.', type: 'warning' });
         }
       } catch (error) {
-        setMessage({ text: 'Error loading schools', type: 'error' });
         console.error('Error in initial data loading:', error);
+        setMessage({ text: 'Error loading schools. You can still use the app, but data may not be available.', type: 'warning' });
         setSchools([]);
       } finally {
-        setLoading(false);
+        setDataLoading(false);
       }
     };
     
@@ -72,26 +72,37 @@ export default function Home() {
   };
 
   const handleSchoolsLoaded = async (newSchools) => {
-    setLoading(true);
+    setOperationLoading(true);
     setMessage({ text: 'Saving schools...', type: 'info' });
+    
+    console.log(`Saving ${newSchools.length} schools to database`);
+    
     try {
       const result = await saveSchools(newSchools);
       if (result.success) {
         setSchools(newSchools);
         setSelectedSchool(null);
         setViewportToSchools(newSchools);
-        setMessage({ text: `Successfully saved ${newSchools.length} schools`, type: 'success' });
+        setMessage({ 
+          text: `Successfully imported ${newSchools.length} schools! ${
+            newSchools.filter(s => s.latitude && s.longitude).length} schools have map coordinates.`, 
+          type: 'success' 
+        });
       } else {
-        setMessage({ text: 'Failed to save schools', type: 'error' });
+        setMessage({ 
+          text: `Failed to save schools: ${result.error || 'Unknown error'}`, 
+          type: 'error' 
+        });
         console.error('Error saving schools:', result.error);
-        alert('Failed to save schools to database');
       }
     } catch (error) {
-      setMessage({ text: 'Failed to save schools', type: 'error' });
+      setMessage({ 
+        text: `Failed to save schools: ${error.message || 'Unknown error'}`, 
+        type: 'error' 
+      });
       console.error('Error saving schools:', error);
-      alert('Failed to save schools to database');
     } finally {
-      setLoading(false);
+      setOperationLoading(false);
     }
   };
 
@@ -100,7 +111,7 @@ export default function Home() {
       return;
     }
 
-    setLoading(true);
+    setOperationLoading(true);
     setMessage({ text: 'Deleting schools...', type: 'info' });
     try {
       const result = await deleteAllSchools();
@@ -115,16 +126,24 @@ export default function Home() {
       } else {
         setMessage({ text: 'Failed to delete schools', type: 'error' });
         console.error('Error deleting schools:', result.error);
-        alert('Failed to delete schools from database');
       }
     } catch (error) {
       setMessage({ text: 'Failed to delete schools', type: 'error' });
       console.error('Error deleting schools:', error);
-      alert('Failed to delete schools from database');
     } finally {
-      setLoading(false);
+      setOperationLoading(false);
     }
   };
+
+  // Skeleton loader for schools list
+  const SchoolsListSkeleton = () => (
+    <div className="animate-pulse">
+      <div className="h-10 bg-gray-200 rounded mb-4"></div>
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="h-16 bg-gray-200 rounded mb-2"></div>
+      ))}
+    </div>
+  );
 
   return (
     <main className="container mx-auto px-4 py-8">
@@ -132,9 +151,26 @@ export default function Home() {
         <div className={`mb-4 p-4 rounded-lg ${
           message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' :
           message.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' :
+          message.type === 'warning' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
           'bg-blue-50 text-blue-700 border border-blue-200'
         }`}>
           {message.text}
+          {message.type === 'warning' && 
+            <button 
+              className="ml-2 text-sm underline" 
+              onClick={() => setMessage(null)}
+            >
+              Dismiss
+            </button>
+          }
+        </div>
+      )}
+      
+      {/* Initial loading indicator - non-blocking */}
+      {dataLoading && (
+        <div className="mb-4 bg-blue-50 p-3 rounded-lg flex items-center">
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500 mr-3"></div>
+          <span className="text-blue-700">Loading school data...</span>
         </div>
       )}
       
@@ -152,20 +188,17 @@ export default function Home() {
                     viewport={viewport}
                     onViewportChange={setViewport}
                   />
-                  {loading && (
-                    <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center">
-                      <div className="flex flex-col items-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mb-3"></div>
-                        <p className="text-gray-500">Loading...</p>
-                      </div>
-                    </div>
-                  )}
                 </div>
-                <SchoolList
-                  schools={schools}
-                  selectedSchool={selectedSchool}
-                  onSchoolSelect={setSelectedSchool}
-                />
+                
+                {dataLoading ? (
+                  <SchoolsListSkeleton />
+                ) : (
+                  <SchoolList
+                    schools={schools}
+                    selectedSchool={selectedSchool}
+                    onSchoolSelect={setSelectedSchool}
+                  />
+                )}
               </div>
             ),
           },
@@ -174,7 +207,7 @@ export default function Home() {
             content: (
               <CSVUpload
                 onSchoolsLoaded={handleSchoolsLoaded}
-                setLoading={setLoading}
+                setLoading={setOperationLoading}
               />
             ),
           },
@@ -185,12 +218,13 @@ export default function Home() {
                 schools={schools}
                 onSchoolsLoaded={handleSchoolsLoaded}
                 onSchoolsDeleted={handleSchoolsDeleted}
+                isLoading={dataLoading}
               />
             ),
           },
           {
             label: 'HubSpot Integration',
-            content: <HubSpotIntegration schools={schools} onSchoolsLoaded={handleSchoolsLoaded} setLoading={setLoading} />,
+            content: <HubSpotIntegration schools={schools} onSchoolsLoaded={handleSchoolsLoaded} setLoading={setOperationLoading} />,
           },
           {
             label: 'Admin Tools',
@@ -199,9 +233,9 @@ export default function Home() {
         ]}
       />
       
-      {/* Loading Overlay */}
-      {loading && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+      {/* Operation Loading Overlay - only shown for user-initiated operations */}
+      {operationLoading && (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-40">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
             <div className="flex items-center justify-center mb-4">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>

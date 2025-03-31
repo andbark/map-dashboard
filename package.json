@@ -15,26 +15,26 @@
   "license": "ISC",
   "dependencies": {
     "@grpc/proto-loader": "^0.7.13",
+    "@types/node": "^22.13.14",
+    "@types/papaparse": "^5.3.15",
+    "@types/react": "^19.0.12",
     "@types/react-dropzone": "^4.2.2",
+    "autoprefixer": "10.4.14",
     "firebase": "^11.5.0",
     "firebase-admin": "^13.2.0",
     "leaflet": "^1.9.4",
     "next": "13.4.19",
     "node-fetch": "^3.3.2",
     "papaparse": "^5.4.1",
+    "postcss": "8.4.24",
     "protobufjs": "^7.4.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-dropzone": "^14.3.8",
-    "react-leaflet": "^4.2.1"
-  },
-  "devDependencies": {
-    "@types/node": "^22.13.14",
-    "@types/react": "^19.0.12",
-    "autoprefixer": "10.4.14",
-    "postcss": "8.4.24",
+    "react-leaflet": "^4.2.1",
     "tailwindcss": "3.3.3",
     "typescript": "^5.8.2",
     "worker-loader": "^3.0.8"
-  }
+  },
+  "devDependencies": {}
 }
