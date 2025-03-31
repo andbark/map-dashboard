@@ -2,29 +2,46 @@
 
 import { useState, useEffect } from 'react';
 
-export default function SchoolList({ schools = [], onSelectSchool, selectedSchool }) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [collapsed, setCollapsed] = useState(false);
-  const [filteredSchools, setFilteredSchools] = useState(schools);
+export default function SchoolList({ 
+  schools, 
+  selectedSchool, 
+  setSelectedSchool,
+  onSchoolSelect,
+  isCollapsed: externalIsCollapsed,
+  setIsCollapsed: externalSetIsCollapsed
+}) {
+  // Use internal state if no external state is provided
+  const [internalIsCollapsed, setInternalIsCollapsed] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   
-  useEffect(() => {
-    if (searchTerm.trim() === '') {
-      setFilteredSchools(schools);
-    } else {
-      const term = searchTerm.toLowerCase().trim();
-      const filtered = schools.filter(school => {
+  // Use either external or internal state
+  const isCollapsed = externalIsCollapsed !== undefined ? externalIsCollapsed : internalIsCollapsed;
+  const setIsCollapsed = externalSetIsCollapsed || setInternalIsCollapsed;
+  
+  // Support both callback styles for compatibility
+  const handleSelectSchool = (school) => {
+    if (setSelectedSchool) {
+      setSelectedSchool(school);
+    } else if (onSchoolSelect) {
+      onSchoolSelect(school);
+    }
+  };
+
+  // Filter schools based on search query
+  const filteredSchools = searchQuery.trim() === '' 
+    ? schools 
+    : schools.filter(school => {
+        const query = searchQuery.toLowerCase();
         return (
-          (school.name && school.name.toLowerCase().includes(term)) ||
-          (school.address && school.address.toLowerCase().includes(term)) ||
-          (school.city && school.city.toLowerCase().includes(term)) ||
-          (school.state && school.state.toLowerCase().includes(term)) ||
-          (school.zip && school.zip.toLowerCase().includes(term)) ||
-          (school.district && school.district.toLowerCase().includes(term))
+          school.name?.toLowerCase().includes(query) ||
+          school.district?.toLowerCase().includes(query) ||
+          school.address?.toLowerCase().includes(query) ||
+          school.city?.toLowerCase().includes(query) ||
+          school.state?.toLowerCase().includes(query) ||
+          school.zipCode?.toLowerCase().includes(query) ||
+          school.zip?.toLowerCase().includes(query)
         );
       });
-      setFilteredSchools(filtered);
-    }
-  }, [searchTerm, schools]);
   
   if (schools.length === 0) {
     return (
@@ -42,14 +59,14 @@ export default function SchoolList({ schools = [], onSelectSchool, selectedSchoo
   }
   
   return (
-    <div className="card">
+    <div className="card overflow-hidden h-full">
       <div className="flex justify-between items-center mb-4">
         <h2 className="heading-2">School List</h2>
         <button
-          onClick={() => setCollapsed(!collapsed)}
+          onClick={() => setIsCollapsed(!isCollapsed)}
           className="text-gray-600 hover:text-gray-900"
         >
-          {collapsed ? (
+          {isCollapsed ? (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
             </svg>
@@ -61,13 +78,13 @@ export default function SchoolList({ schools = [], onSelectSchool, selectedSchoo
         </button>
       </div>
       
-      {!collapsed && (
+      {!isCollapsed && (
         <>
           <div className="relative mb-4">
             <input
               type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search schools..."
               className="w-full border border-gray-300 rounded-md py-2 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
@@ -76,10 +93,10 @@ export default function SchoolList({ schools = [], onSelectSchool, selectedSchoo
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
               </svg>
             </div>
-            {searchTerm && (
+            {searchQuery && (
               <button
                 className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                onClick={() => setSearchTerm('')}
+                onClick={() => setSearchQuery('')}
               >
                 <svg className="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -104,7 +121,7 @@ export default function SchoolList({ schools = [], onSelectSchool, selectedSchoo
                     key={`${school.name}-${index}`}
                     className={`px-4 py-3 cursor-pointer transition-colors
                       ${selectedSchool === school ? 'bg-indigo-50 border-l-4 border-indigo-500' : 'hover:bg-gray-100'}`}
-                    onClick={() => onSelectSchool(school)}
+                    onClick={() => handleSelectSchool(school)}
                   >
                     <div className="flex justify-between items-start">
                       <div>

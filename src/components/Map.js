@@ -27,10 +27,33 @@ function ChangeView({ center, zoom }) {
   return null;
 }
 
-export default function Map({ schools = [], selectedSchool, viewport, setViewport }) {
+export default function Map({ 
+  schools = [], 
+  selectedSchool, 
+  onSchoolSelect,
+  viewport, 
+  onViewportChange,
+  setViewport 
+}) {
   const [mapLoaded, setMapLoaded] = useState(false);
   const defaultCenter = [39.8283, -98.5795]; // Center of US
   const defaultZoom = 4;
+
+  // Support both callback styles for compatibility
+  const handleViewportChange = (newViewport) => {
+    if (onViewportChange) {
+      onViewportChange(newViewport);
+    } else if (setViewport) {
+      setViewport(newViewport);
+    }
+  };
+
+  // Support both callback styles for compatibility
+  const handleSchoolSelect = (school) => {
+    if (onSchoolSelect) {
+      onSchoolSelect(school);
+    }
+  };
 
   useEffect(() => {
     // Set mapLoaded to true after component mount
@@ -48,12 +71,12 @@ export default function Map({ schools = [], selectedSchool, viewport, setViewpor
   useEffect(() => {
     // When a school is selected, update the viewport to focus on it
     if (selectedSchool && selectedSchool.latitude && selectedSchool.longitude) {
-      setViewport({
+      handleViewportChange({
         center: [parseFloat(selectedSchool.latitude), parseFloat(selectedSchool.longitude)],
         zoom: 13
       });
     }
-  }, [selectedSchool, setViewport]);
+  }, [selectedSchool]);
 
   // Log any issues with coordinates
   useEffect(() => {
@@ -151,6 +174,9 @@ export default function Map({ schools = [], selectedSchool, viewport, setViewpor
                 key={`${school.name}-${index}`}
                 position={[lat, lng]}
                 icon={DefaultIcon}
+                eventHandlers={{
+                  click: () => handleSchoolSelect(school)
+                }}
               >
                 <Popup>
                   <div>
