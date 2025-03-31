@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import Papa from 'papaparse';
 
 export default function CSVUpload({ onSchoolsLoaded, enableAddToDefault }) {
@@ -19,6 +19,9 @@ export default function CSVUpload({ onSchoolsLoaded, enableAddToDefault }) {
     state: '',
     zip: ''
   });
+  
+  // Add geocoding cache
+  const geocodingCache = useRef(new Map());
   
   const handleDrag = useCallback((e) => {
     e.preventDefault();
@@ -47,6 +50,13 @@ export default function CSVUpload({ onSchoolsLoaded, enableAddToDefault }) {
   
   const geocodeAddress = async (address, city, state, zip) => {
     const fullAddress = `${address}, ${city}, ${state} ${zip}`;
+    const cacheKey = fullAddress.toLowerCase().trim();
+    
+    // Check cache first
+    if (geocodingCache.current.has(cacheKey)) {
+      return geocodingCache.current.get(cacheKey);
+    }
+    
     try {
       const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}&limit=1`);
       
@@ -56,14 +66,14 @@ export default function CSVUpload({ onSchoolsLoaded, enableAddToDefault }) {
       
       const data = await response.json();
       
-      if (data.length > 0) {
-        return {
-          latitude: data[0].lat,
-          longitude: data[0].lon
-        };
-      } else {
-        return { latitude: null, longitude: null };
-      }
+      const result = data.length > 0 
+        ? { latitude: data[0].lat, longitude: data[0].lon }
+        : { latitude: null, longitude: null };
+      
+      // Cache the result
+      geocodingCache.current.set(cacheKey, result);
+      
+      return result;
     } catch (error) {
       console.error('Error geocoding address:', error);
       return { latitude: null, longitude: null };
@@ -75,19 +85,18 @@ export default function CSVUpload({ onSchoolsLoaded, enableAddToDefault }) {
     setGeocodingProgress(0);
     
     const totalSchools = schools.length;
+    const batchSize = 10; // Process 10 schools at a time
     const geocodedSchools = [];
     
-    for (let i = 0; i < totalSchools; i++) {
-      const school = schools[i];
-      
-      // Check if school already has coordinates
-      if (school.latitude && school.longitude) {
-        geocodedSchools.push(school);
-      } else {
-        // Need to add 1 second delay between requests to comply with Nominatim usage policy
-        if (i > 0) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+    for (let i = 0; i < totalSchools; i += batchSize) {
+      const batch = schools.slice(i, i + batchSize);
+      const batchPromises = batch.map(async (school) => {
+        if (school.latitude && school.longitude) {
+          return school;
         }
+        
+        // Add a small random delay between 100-300ms to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, Math.random() * 200 + 100));
         
         const { latitude, longitude } = await geocodeAddress(
           school.address, 
@@ -96,16 +105,19 @@ export default function CSVUpload({ onSchoolsLoaded, enableAddToDefault }) {
           school.zip
         );
         
-        geocodedSchools.push({
+        return {
           ...school,
           latitude,
           longitude
-        });
-      }
+        };
+      });
+      
+      const batchResults = await Promise.all(batchPromises);
+      geocodedSchools.push(...batchResults);
       
       // Update progress
-      const progress = Math.round(((i + 1) / totalSchools) * 100);
-      setGeocodingProgress(progress);
+      const progress = Math.round(((i + batchSize) / totalSchools) * 100);
+      setGeocodingProgress(Math.min(progress, 100));
     }
     
     setGeocodingInProgress(false);
@@ -165,60 +177,72 @@ export default function CSVUpload({ onSchoolsLoaded, enableAddToDefault }) {
   }, [file, fieldMapping]);
   
   const processCsvData = useCallback(async (headers, useMapping = false) => {
-    Papa.parse(file, {
+    const config = {
       header: true,
+      worker: true, // Enable worker thread
+      skipEmptyLines: true, // Skip empty lines to reduce processing
+      fastMode: true, // Enable fast mode for basic CSV parsing
       complete: async (results) => {
-        // Prepare school data with mapped fields if needed
-        const schools = results.data
-          .filter(school => {
+        // Filter out invalid rows first to reduce processing
+        const validSchools = results.data.filter(school => {
+          if (useMapping) {
+            return school[fieldMapping.name]?.trim() && school[fieldMapping.address]?.trim();
+          }
+          return school.name?.trim() && school.address?.trim();
+        });
+
+        // Process schools in chunks to avoid memory issues
+        const chunkSize = 100;
+        const processedSchools = [];
+        
+        for (let i = 0; i < validSchools.length; i += chunkSize) {
+          const chunk = validSchools.slice(i, i + chunkSize);
+          const processedChunk = chunk.map(school => {
             if (useMapping) {
-              return school[fieldMapping.name] && school[fieldMapping.address]; 
-            }
-            return school.name && school.address;
-          })
-          .map(school => {
-            if (useMapping) {
-              // Transform the data using the field mapping
               return {
-                name: school[fieldMapping.name] || '',
-                address: school[fieldMapping.address] || '',
-                city: school[fieldMapping.city] || '',
-                state: school[fieldMapping.state] || '',
-                zip: school[fieldMapping.zip] || '',
-                // Include other fields as-is
+                name: school[fieldMapping.name]?.trim() || '',
+                address: school[fieldMapping.address]?.trim() || '',
+                city: school[fieldMapping.city]?.trim() || '',
+                state: school[fieldMapping.state]?.trim() || '',
+                zip: school[fieldMapping.zip]?.trim() || '',
                 district: school.district || '',
                 latitude: school.latitude || null,
                 longitude: school.longitude || null,
-                // Keep the original record for reference
                 originalRecord: {...school}
               };
             }
             
-            // No mapping needed, use data as-is
             return {
               ...school,
+              name: school.name?.trim(),
+              address: school.address?.trim(),
+              city: school.city?.trim(),
+              state: school.state?.trim(),
+              zip: school.zip?.trim(),
               latitude: school.latitude || null,
               longitude: school.longitude || null,
             };
           });
+          
+          processedSchools.push(...processedChunk);
+        }
         
-        // Now geocode the schools if they don't have coordinates
-        const schoolsWithCoordinates = await geocodeSchools(schools);
-        
-        // Call the parent component's callback with the processed schools and the addToDefaultDataset flag
+        // Now geocode the schools
+        const schoolsWithCoordinates = await geocodeSchools(processedSchools);
         onSchoolsLoaded(schoolsWithCoordinates, addToDefaultDataset);
         
-        // Reset mapping state
         setShowMapping(false);
         setIsLoading(false);
-        setAddToDefaultDataset(false); // Reset the checkbox for next time
+        setAddToDefaultDataset(false);
       },
       error: (error) => {
         console.error('Error processing CSV:', error);
         alert('Error processing CSV file');
         setIsLoading(false);
       }
-    });
+    };
+    
+    Papa.parse(file, config);
   }, [file, onSchoolsLoaded, fieldMapping, addToDefaultDataset]);
   
   const handleSubmit = () => {
