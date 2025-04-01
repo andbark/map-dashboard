@@ -167,16 +167,6 @@ export default function Home() {
     <main className="container mx-auto p-4 md:p-8">
       <h1 className="heading-1 mb-6">School Photography Dashboard</h1>
       
-      {/* Loading indicator for initial data fetch */}
-      {dataLoading && activeTab === 'Map View' && (
-         <div className="card h-[600px] flex items-center justify-center mb-6">
-           <div className="flex flex-col items-center">
-             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mb-3"></div>
-             <p className="text-gray-500">Loading school data...</p>
-           </div>
-         </div>
-      )}
-      
       <TabsContainer
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -195,15 +185,12 @@ export default function Home() {
                   />
                 </div>
                 
-                {dataLoading ? (
-                  <SchoolsListSkeleton />
-                ) : (
-                  <SchoolList
-                    schools={schools}
-                    selectedSchool={selectedSchool}
-                    onSelectSchool={setSelectedSchool}
-                  />
-                )}
+                <SchoolList
+                  schools={schools}
+                  selectedSchool={selectedSchool}
+                  onSelectSchool={setSelectedSchool}
+                  isLoading={dataLoading}
+                />
               </div>
             ),
           },
