@@ -1,74 +1,67 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { db } from '../lib/firebase';
+import { firestore } from '../utils/firebase';
 import { collection, getDocs, addDoc } from 'firebase/firestore';
 
 export default function TestFirebase() {
-  const [status, setStatus] = useState('Loading...');
-  const [testResult, setTestResult] = useState(null);
+  const [status, setStatus] = useState('Idle');
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    async function testFirebaseConnection() {
-      try {
-        // Test reading from Firestore
-        setStatus('Testing read from Firestore...');
-        const schoolsCollection = collection(db, 'schools');
-        const snapshot = await getDocs(schoolsCollection);
-        
-        // Test writing to Firestore
-        setStatus('Testing write to Firestore...');
-        const testCollection = collection(db, 'tests');
-        const docRef = await addDoc(testCollection, {
-          message: 'Test document',
-          timestamp: new Date().toISOString()
-        });
-        
-        setStatus('Success!');
-        setTestResult({
-          read: {
-            success: true,
-            schoolCount: snapshot.size
-          },
-          write: {
-            success: true,
-            documentId: docRef.id
-          }
-        });
-      } catch (error) {
-        console.error('Firebase test failed:', error);
-        setStatus('Error');
-        setTestResult({
-          success: false,
-          error: error.message
-        });
-      }
+  const runTests = async () => {
+    setError(null);
+    setData(null);
+
+    if (!firestore) {
+      setStatus('Error');
+      setError('Firestore instance is not available.');
+      return;
     }
-    
-    testFirebaseConnection();
-  }, []);
+
+    try {
+      // Test reading from Firestore
+      setStatus('Testing read from Firestore...');
+      const testCollectionRef = collection(firestore, 'test_collection');
+      const querySnapshot = await getDocs(testCollectionRef);
+      const fetchedData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setData(fetchedData);
+      console.log('Firestore read test successful:', fetchedData);
+      setStatus('Read test successful. Testing write...');
+
+      // Test writing to Firestore
+      await addDoc(testCollectionRef, { 
+        message: 'Hello from TestFirebase component!', 
+        timestamp: new Date()
+      });
+      console.log('Firestore write test successful.');
+      setStatus('Write test successful. All tests passed!');
+      
+    } catch (err) {
+      console.error('Firebase test error:', err);
+      setError(err.message);
+      setStatus('Error during tests');
+    }
+  };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-4">Firebase Connection Test</h1>
-      
-      <div className="card p-6">
-        <div className="mb-4">
-          <span className="font-medium">Status: </span>
-          <span className={`px-2 py-1 rounded ${
-            status === 'Success!' ? 'bg-green-100 text-green-800' : 
-            status === 'Error' ? 'bg-red-100 text-red-800' : 
-            'bg-blue-100 text-blue-800'
-          }`}>
-            {status}
-          </span>
-        </div>
-        
-        {testResult && (
-          <div className="mt-4">
-            <h2 className="text-lg font-semibold mb-2">Test Results:</h2>
-            <pre className="bg-gray-100 p-4 rounded overflow-x-auto">
-              {JSON.stringify(testResult, null, 2)}
+    <div className="p-4 border rounded">
+      <h2 className="text-xl font-semibold mb-2">Firebase Connection Test</h2>
+      <button 
+        onClick={runTests}
+        className="bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+        disabled={status.includes('Testing')}
+      >
+        {status.includes('Testing') ? 'Running...' : 'Run Firebase Tests'}
+      </button>
+      <div className="mt-4">
+        <p><strong>Status:</strong> {status}</p>
+        {error && <p className="text-red-500"><strong>Error:</strong> {error}</p>}
+        {data && (
+          <div className="mt-2">
+            <h3 className="font-semibold">Data Read:</h3>
+            <pre className="bg-gray-100 p-2 rounded text-xs overflow-auto">
+              {JSON.stringify(data, null, 2)}
             </pre>
           </div>
         )}

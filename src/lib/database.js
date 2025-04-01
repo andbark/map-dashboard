@@ -1,199 +1,133 @@
 import { collection, addDoc, getDocs, query, where, orderBy, writeBatch, doc, deleteDoc } from 'firebase/firestore';
-import { db } from './firebase';
+import { firestore } from '../utils/firebase';
 
 // Save schools to Firestore with improved error handling
 export async function saveSchools(schools) {
-  try {
-    console.log(`Starting batch save of ${schools.length} schools to Firestore`);
-    console.log('Sample school data structure:', schools[0]);
-    
-    // First, delete all existing schools
-    try {
-      const schoolsRef = collection(db, 'schools');
-      console.log('Getting existing schools from collection:', schoolsRef.path);
-      const querySnapshot = await getDocs(schoolsRef);
-      
-      if (querySnapshot.size > 0) {
-        console.log(`Deleting ${querySnapshot.size} existing schools`);
-        const deleteBatch = writeBatch(db);
-        
-        let count = 0;
-        querySnapshot.forEach((doc) => {
-          deleteBatch.delete(doc.ref);
-          count++;
-          
-          // Firestore has a limit of 500 operations per batch
-          if (count >= 400) {
-            console.log(`Committing delete batch with ${count} operations`);
-            deleteBatch.commit();
-            count = 0;
-          }
-        });
-        
-        if (count > 0) {
-          console.log(`Committing final delete batch with ${count} operations`);
-          await deleteBatch.commit();
-        }
-        
-        console.log('Existing schools deleted successfully');
-      } else {
-        console.log('No existing schools to delete');
-      }
-    } catch (deleteError) {
-      console.error('Error deleting existing schools:', deleteError);
-      console.error('Delete error details:', JSON.stringify(deleteError, null, 2));
-      // Continue with the save operation even if delete fails
-    }
-    
-    // Then add all new schools in smaller batches to avoid timeouts
-    console.log(`Adding ${schools.length} new schools`);
-    const schoolsRef = collection(db, 'schools');
-    const BATCH_SIZE = 100;
-    let totalAdded = 0;
-    
-    for (let i = 0; i < schools.length; i += BATCH_SIZE) {
-      const batch = writeBatch(db);
-      const currentBatch = schools.slice(i, i + BATCH_SIZE);
-      
-      console.log(`Processing batch ${Math.floor(i/BATCH_SIZE) + 1} of ${Math.ceil(schools.length/BATCH_SIZE)}: ${currentBatch.length} schools`);
-      
-      currentBatch.forEach((school) => {
-        const docRef = doc(schoolsRef);
-        // Log a sample document for debugging
-        if (i === 0 && totalAdded === 0) {
-          console.log('Sample document being written:', {
-            name: school.name || '',
-            address: school.address || '',
-            city: school.city || '',
-            state: school.state || '',
-            zipCode: school.zipCode || school.zip || '',
-            district: school.district || '',
-            latitude: school.latitude !== undefined ? parseFloat(school.latitude) : null,
-            longitude: school.longitude !== undefined ? parseFloat(school.longitude) : null,
-          });
-        }
-        
-        batch.set(docRef, {
-          name: school.name || '',
-          address: school.address || '',
-          city: school.city || '',
-          state: school.state || '',
-          zipCode: school.zipCode || school.zip || '',
-          district: school.district || '',
-          latitude: school.latitude !== undefined ? parseFloat(school.latitude) : null,
-          longitude: school.longitude !== undefined ? parseFloat(school.longitude) : null,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
-        totalAdded++;
+  if (!firestore) {
+    console.error("Firestore instance is not available.");
+    return { success: false, error: 'Firestore not initialized' };
+  }
+  if (!Array.isArray(schools) || schools.length === 0) {
+    console.log('No schools data provided to save.');
+    return { success: false, error: 'No school data provided' };
+  }
+  
+  console.log(`Starting batch save of ${schools.length} schools to Firestore`);
+  const schoolsCollectionRef = collection(firestore, 'schools');
+  const batch = writeBatch(firestore);
+  let schoolsAdded = 0;
+  
+  schools.forEach((school) => {
+    if (school && school.name && school.address && school.city && school.state) {
+      const newSchoolRef = doc(schoolsCollectionRef);
+      batch.set(newSchoolRef, {
+        name: school.name || '',
+        district: school.district || '',
+        address: school.address || '',
+        city: school.city || '',
+        state: school.state || '',
+        zipCode: school.zipCode || school.zip || '',
+        latitude: school.latitude !== undefined && !isNaN(parseFloat(school.latitude)) ? parseFloat(school.latitude) : null,
+        longitude: school.longitude !== undefined && !isNaN(parseFloat(school.longitude)) ? parseFloat(school.longitude) : null,
       });
-      
-      try {
-        console.log(`Committing batch ${Math.floor(i/BATCH_SIZE) + 1}...`);
-        const startTime = Date.now();
-        await batch.commit();
-        const endTime = Date.now();
-        console.log(`Batch ${Math.floor(i/BATCH_SIZE) + 1} committed successfully in ${endTime - startTime}ms`);
-      } catch (batchError) {
-        console.error(`Error committing batch ${Math.floor(i/BATCH_SIZE) + 1}:`, batchError);
-        console.error('Batch error details:', JSON.stringify(batchError, null, 2));
-        throw batchError; // Re-throw to be caught by outer try/catch
-      }
+      schoolsAdded++;
+    } else {
+      console.warn('Skipping invalid school data:', school);
     }
-    
-    console.log(`Successfully saved ${totalAdded} schools to Firestore`);
-    return { success: true, count: totalAdded };
+  });
+
+  if (schoolsAdded === 0) {
+    console.log('No valid schools found to add to the batch.');
+    return { success: true, totalAdded: 0, message: 'No valid schools to save.' };
+  }
+
+  try {
+    console.log(`Committing batch for ${schoolsAdded} schools...`);
+    await batch.commit();
+    console.log(`Successfully saved ${schoolsAdded} schools to Firestore`);
+    return { success: true, totalAdded: schoolsAdded };
   } catch (error) {
-    console.error('Error saving schools:', error);
-    console.error('Error details:', JSON.stringify(error, null, 2));
+    console.error('Error saving schools batch to Firestore:', error);
     return { success: false, error: error.message };
   }
 }
 
 // Get all schools from Firestore
 export async function getAllSchools() {
+  if (!firestore) { 
+    console.error("Firestore instance is not available.");
+    return { success: false, error: 'Firestore not initialized' };
+  }
   try {
-    console.log('Fetching all schools from database');
-    const schoolsRef = collection(db, 'schools');
-    const q = query(schoolsRef, orderBy('createdAt', 'desc'));
+    const schoolsCollectionRef = collection(firestore, 'schools');
+    const q = query(schoolsCollectionRef, orderBy('name'));
     const querySnapshot = await getDocs(q);
-    
-    const schools = [];
-    querySnapshot.forEach((doc) => {
-      // Standardize property names
-      const data = doc.data();
-      schools.push({ 
-        id: doc.id,
-        name: data.name,
-        district: data.district || '',
-        address: data.address,
-        city: data.city,
-        state: data.state,
-        zipCode: data.zipCode || data.zip || '',
-        latitude: data.latitude,
-        longitude: data.longitude
-      });
-    });
-    
-    console.log(`Fetched ${schools.length} schools from database`);
+    const schools = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
     return { success: true, schools };
   } catch (error) {
-    console.error('Error getting schools:', error);
+    console.error('Error fetching schools from Firestore:', error);
     return { success: false, error: error.message };
   }
 }
 
 // Delete all schools from Firestore
 export async function deleteAllSchools() {
+  if (!firestore) { 
+    console.error("Firestore instance is not available.");
+    return { success: false, error: 'Firestore not initialized' };
+  }
+  console.log("Attempting to delete all schools from Firestore...");
+  const schoolsCollectionRef = collection(firestore, 'schools');
+  let deletedCount = 0;
+  
   try {
-    const schoolsRef = collection(db, 'schools');
-    const querySnapshot = await getDocs(schoolsRef);
-    
-    if (querySnapshot.size === 0) {
-      return { success: true, message: "No schools to delete" };
+    const snapshot = await getDocs(schoolsCollectionRef); 
+    if (snapshot.empty) {
+      console.log("No schools found to delete.");
+      return { success: true, deletedCount: 0 };
     }
     
-    const BATCH_SIZE = 400; // Firestore limit is 500
+    const BATCH_SIZE = 400;
+    let batch = writeBatch(firestore);
     let batchCount = 0;
-    let batch = writeBatch(db);
-    let count = 0;
-    
-    querySnapshot.forEach((document) => {
-      batch.delete(document.ref);
-      count++;
-      
-      if (count >= BATCH_SIZE) {
-        batchCount++;
-        console.log(`Committing delete batch ${batchCount}`);
-        batch.commit();
-        batch = writeBatch(db);
-        count = 0;
+
+    for (const docSnapshot of snapshot.docs) {
+      batch.delete(docSnapshot.ref);
+      batchCount++;
+      deletedCount++;
+      if (batchCount === BATCH_SIZE) {
+        console.log(`Committing delete batch of ${batchCount} schools...`);
+        await batch.commit();
+        batch = writeBatch(firestore);
+        batchCount = 0;
       }
-    });
+    }
     
-    if (count > 0) {
-      console.log(`Committing final delete batch`);
+    if (batchCount > 0) {
+      console.log(`Committing final delete batch of ${batchCount} schools...`);
       await batch.commit();
     }
     
-    return { success: true };
+    console.log(`Successfully deleted ${deletedCount} schools.`);
+    return { success: true, deletedCount };
+
   } catch (error) {
-    console.error('Error deleting schools:', error);
+    console.error('Error deleting all schools:', error);
     return { success: false, error: error.message };
   }
 }
 
-// Save file metadata to Firestore
-export async function saveFileMetadata(fileData) {
+// Function to save file metadata (if used by fileUpload.js)
+export async function saveFileMetadata(metadata) {
+  if (!firestore) { 
+    console.error("Firestore instance is not available for saveFileMetadata.");
+    return { success: false, error: 'Firestore not initialized' };
+  }
   try {
-    const docRef = await addDoc(collection(db, 'files'), {
-      filename: fileData.filename,
-      url: fileData.url,
-      type: fileData.type,
-      size: fileData.size,
-      uploadedBy: fileData.uploadedBy || 'anonymous',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+    const filesCollectionRef = collection(firestore, 'uploadedFiles');
+    const docRef = await addDoc(filesCollectionRef, {
+      ...metadata,
+      uploadedAt: serverTimestamp()
     });
     return { success: true, id: docRef.id };
   } catch (error) {
@@ -205,7 +139,7 @@ export async function saveFileMetadata(fileData) {
 // Get all files
 export async function getAllFiles() {
   try {
-    const filesRef = collection(db, 'files');
+    const filesRef = collection(firestore, 'files');
     const q = query(filesRef, orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
     
@@ -224,7 +158,7 @@ export async function getAllFiles() {
 // Get files by type
 export async function getFilesByType(fileType) {
   try {
-    const filesRef = collection(db, 'files');
+    const filesRef = collection(firestore, 'files');
     const q = query(
       filesRef,
       where('type', '==', fileType),

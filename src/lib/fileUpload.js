@@ -52,6 +52,10 @@ export async function uploadFile(file) {
   if (!file) {
     throw new Error('No file provided for upload.');
   }
+  if (!storage) {
+    console.error("Storage service not available in uploadFile");
+    throw new Error('Storage service not initialized');
+  }
 
   const filename = `${Date.now()}-${file.name}`;
   const storageRef = ref(storage, `uploads/${filename}`);
@@ -60,9 +64,28 @@ export async function uploadFile(file) {
     const snapshot = await uploadBytes(storageRef, file);
     const downloadURL = await getDownloadURL(snapshot.ref);
     
-    return downloadURL;
+    const metadataResult = await saveFileMetadata({
+      filename: filename,
+      originalName: file.name,
+      url: downloadURL,
+      size: file.size,
+      contentType: file.type,
+      storagePath: snapshot.metadata.fullPath,
+      ...(userId ? { uploadedBy: userId } : { uploadedBy: 'anonymous' })
+    });
+
+    if (!metadataResult.success) {
+      console.warn(`Failed to save metadata for ${filename}: ${metadataResult.error}`);
+    }
+    
+    return { 
+      success: true, 
+      url: downloadURL, 
+      id: metadataResult.id
+    };
+
   } catch (error) {
-    console.error('Error uploading file:', error);
+    console.error('Error uploading file or saving metadata:', error);
     throw error;
   }
 } 
