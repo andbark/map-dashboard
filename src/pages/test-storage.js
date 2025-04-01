@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ref, uploadString, getDownloadURL, listAll } from 'firebase/storage';
-import { storage } from '../lib/firebase';
+import { storage } from '../utils/firebase';
 
 export default function TestStorage() {
   const [uploadResult, setUploadResult] = useState(null);

@@ -1,48 +1,68 @@
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from './firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { storage, firestore } from '../utils/firebase';
 import { saveFileMetadata } from './database';
 
-export async function uploadFile(file) {
+// Upload file to Firebase Storage and save metadata to Firestore
+export async function uploadFileAndSaveMetadata(
+  file,
+  userId
+) {
+  if (!file) {
+    throw new Error('No file provided for upload.');
+  }
+
+  const uniqueFilename = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+  const storagePath = `uploads/${uniqueFilename}`;
+  const storageRef = ref(storage, storagePath);
+
   try {
-    // Create a unique filename using timestamp
-    const timestamp = Date.now();
-    const filename = `${timestamp}-${file.name}`;
-    
-    // Create a reference to the file location
-    const storageRef = ref(storage, `uploads/${filename}`);
-    
-    // Upload the file to Firebase Storage
+    console.log(`Uploading file to: ${storagePath}`);
+    const uploadResult = await uploadBytes(storageRef, file);
+    console.log('File uploaded successfully:', uploadResult.metadata.fullPath);
+
+    const downloadURL = await getDownloadURL(uploadResult.ref);
+    console.log('Download URL obtained:', downloadURL);
+
+    const metadata = {
+      filename: uniqueFilename,
+      originalFilename: file.name,
+      contentType: file.type,
+      size: file.size,
+      storagePath: uploadResult.metadata.fullPath,
+      downloadURL: downloadURL,
+      uploadedAt: serverTimestamp(),
+      ...(userId ? { uploadedBy: userId } : {}),
+    };
+
+    console.log('Saving metadata to Firestore:', metadata);
+    const filesCollectionRef = collection(firestore, 'uploadedFiles');
+    const docRef = await addDoc(filesCollectionRef, metadata);
+    console.log('Metadata saved successfully with ID:', docRef.id);
+
+    return { ...metadata, id: docRef.id };
+
+  } catch (error) {
+    console.error('Error during file upload and metadata save:', error);
+    throw new Error(`Failed to upload file or save metadata: ${error.message}`);
+  }
+}
+
+export async function uploadFile(file) {
+  if (!file) {
+    throw new Error('No file provided for upload.');
+  }
+
+  const filename = `${Date.now()}-${file.name}`;
+  const storageRef = ref(storage, `uploads/${filename}`);
+  
+  try {
     const snapshot = await uploadBytes(storageRef, file);
-    
-    // Get the download URL
     const downloadURL = await getDownloadURL(snapshot.ref);
     
-    // Save file metadata to Firestore
-    const fileData = {
-      filename: filename,
-      url: downloadURL,
-      type: file.type,
-      size: file.size,
-      uploadedBy: 'anonymous' // You can replace this with actual user info if you have authentication
-    };
-    
-    const dbResult = await saveFileMetadata(fileData);
-    
-    if (!dbResult.success) {
-      throw new Error('Failed to save file metadata');
-    }
-    
-    return {
-      success: true,
-      url: downloadURL,
-      filename: filename,
-      id: dbResult.id
-    };
+    return downloadURL;
   } catch (error) {
     console.error('Error uploading file:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    throw error;
   }
 } 

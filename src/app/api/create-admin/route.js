@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { app } from '../../../lib/firebase';
+import { auth } from '../../../utils/firebase';
 
 export async function POST() {
   try {
-    const auth = getAuth(app);
     const userCredential = await createUserWithEmailAndPassword(
       auth,
       'admin@mapdashboard.com',
