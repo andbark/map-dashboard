@@ -42,47 +42,45 @@ export default function Home() {
   // Effect to fetch schools from Firestore in real-time
   useEffect(() => {
     setDataLoading(true);
-    console.log("Setting up Firestore listener for schools...");
+    console.log("Setting up Firestore data fetch...");
 
     // Check if firestore is available before using it
     if (!firestore) {
-        console.error("Firestore is not initialized. Cannot set up listener.");
+        console.error("Firestore is not initialized. Cannot fetch data.");
         setDataLoading(false); // Stop loading state
         return; // Exit effect
     }
 
-    try {
-      // First, create the schools collection if it doesn't exist by adding a dummy doc
-      // This ensures the collection exists before we attempt to query it
-      const schoolsCollectionRef = collection(firestore, "schools");
-      
-      // Simple query without ordering to reduce chances of errors
-      const q = query(schoolsCollectionRef);
-      
-      console.log("Setting up onSnapshot listener for schools collection...");
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        console.log(`Firestore snapshot received: ${querySnapshot.size} schools`);
-        const schoolsData = [];
-        querySnapshot.forEach((doc) => {
-          schoolsData.push({ ...doc.data(), id: doc.id });
-        });
-        setSchools(schoolsData);
+    // Using a simple one-time fetch instead of a real-time listener
+    const fetchSchools = async () => {
+      try {
+        console.log("Attempting to fetch schools data once (no listener)...");
+        const schoolsCollectionRef = collection(firestore, "schools");
+        const q = query(schoolsCollectionRef);
+        
+        // Using getDocs instead of onSnapshot for a one-time fetch
+        const querySnapshot = await getAllSchools();
+        
+        if (querySnapshot.success) {
+          console.log(`Firestore fetch successful: ${querySnapshot.schools.length} schools`);
+          setSchools(querySnapshot.schools);
+        } else {
+          console.error("Error fetching schools:", querySnapshot.error);
+        }
+        
         setDataLoading(false);
-        console.log("Schools state updated from Firestore.");
-      }, (error) => {
-        console.error("Error in Firestore listener:", error);
+      } catch (error) {
+        console.error("Error in Firestore fetch:", error);
         setDataLoading(false);
-      });
-
-      // Cleanup function
-      return () => {
-        console.log("Cleaning up Firestore listener.");
-        unsubscribe();
-      };
-    } catch (error) {
-      console.error("Error setting up Firestore listener:", error);
-      setDataLoading(false);
-    }
+      }
+    };
+    
+    fetchSchools();
+    
+    // No cleanup needed for one-time fetch
+    return () => {
+      console.log("Component unmounting, no listener to clean up.");
+    };
   }, []); // Empty dependency array remains correct
 
   const setViewportToSchools = (schoolsList) => {
