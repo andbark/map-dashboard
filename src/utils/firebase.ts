@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
-import { initializeApp, getApps } from "firebase/app";
-import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
@@ -15,33 +15,42 @@ const firebaseConfig = {
   measurementId: "G-DT81BVFCYL"
 };
 
-// Initialize Firebase
+// Initialize Firebase App and Services using a Singleton pattern
 let app;
 let firestore;
 let auth;
 let storage;
 
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-  firestore = getFirestore(app);
-  auth = getAuth(app);
-  storage = getStorage(app);
-  
-  // Enable offline persistence
-  if (typeof window !== 'undefined') {
-    enableIndexedDbPersistence(firestore)
-      .then(() => {
-        console.log('Firebase initialized successfully');
-      })
-      .catch((err) => {
-        console.error('Firebase persistence error:', err.code);
-      });
+if (getApps().length === 0) {
+  // Initialize the default app only if it doesn't exist
+  try {
+    app = initializeApp(firebaseConfig);
+    console.log('Firebase initialized successfully (new instance).');
+  } catch (error) {
+    console.error('Error initializing Firebase:', error);
+    // Handle initialization error appropriately
+    // Depending on the error, you might want to throw it or log it differently
   }
 } else {
-  app = getApps()[0];
-  firestore = getFirestore(app);
-  auth = getAuth(app);
-  storage = getStorage(app);
+  // Get the default app if it already exists
+  app = getApp();
+  console.log('Firebase app already initialized, getting existing instance.');
 }
+
+// Get Firestore, Auth, Storage instances (safe to call multiple times)
+try {
+  firestore = getFirestore(app);
+} catch(e) { console.error("Error getting Firestore instance:", e); }
+
+try {
+  auth = getAuth(app);
+} catch(e) { console.error("Error getting Auth instance:", e); }
+
+try {
+  storage = getStorage(app);
+} catch(e) { console.error("Error getting Storage instance:", e); }
+
+// Removed IndexedDB persistence setup temporarily to rule it out as an issue
+// It can sometimes cause complexity with initialization
 
 export { app, firestore, auth, storage }; 
