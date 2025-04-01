@@ -6,13 +6,12 @@ import { getStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBqeov7UixuS6Zo0vXbb_WmP5BbRoWSYcs",
-  authDomain: "map-dashboard-5bdce.firebaseapp.com",
-  projectId: "map-dashboard-5bdce",
-  storageBucket: "map-dashboard-5bdce.firebasestorage.app",
-  messagingSenderId: "368958593163",
-  appId: "1:368958593163:web:0c146444e79646f34a5c8e",
-  measurementId: "G-DT81BVFCYL"
+  apiKey: "AIzaSyAZ6tsj3CgZEZ4tdbSJWs3T7aaDL5bqJD0",
+  authDomain: "school-map-dashboard.firebaseapp.com",
+  projectId: "school-map-dashboard",
+  storageBucket: "school-map-dashboard.firebasestorage.app",
+  messagingSenderId: "984466160536",
+  appId: "1:984466160536:web:aa1def24dce50a9bcb89ed"
 };
 
 let app;

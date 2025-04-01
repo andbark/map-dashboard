@@ -8,10 +8,10 @@ import HubSpotIntegration from '../components/HubSpotIntegration';
 import AdminTools from '../components/AdminTools';
 import TabsContainer from '../components/TabsContainer';
 import DataManager from '../components/DataManager';
-// Import commented out to completely disable Firebase
-// import { firestore } from '../utils/firebase';
-// import { collection, onSnapshot, query } from "firebase/firestore";
-// import { getAllSchools } from '../lib/database';
+// Re-enable Firebase imports
+import { firestore } from '../utils/firebase';
+import { collection, onSnapshot, query, getDocs } from "firebase/firestore";
+import { getAllSchools } from '../lib/database';
 
 // MOCK DATA for testing without Firebase
 const MOCK_SCHOOLS = [
@@ -76,19 +76,57 @@ export default function Home() {
   });
   const [activeTab, setActiveTab] = useState('Map View');
 
-  /* === COMPLETELY MOCKED DATA - NO FIREBASE === */
+  /* === USING FIREBASE SIMPLE FETCH === */
   useEffect(() => {
-    console.log("Loading mock data instead of Firebase...");
+    setDataLoading(true);
+    console.log("Setting up Firestore data fetch...");
+
+    // Check if firestore is available before using it
+    if (!firestore) {
+        console.error("Firestore is not initialized. Cannot fetch data.");
+        setDataLoading(false); // Stop loading state
+        return; // Exit effect
+    }
+
+    // Using a simple one-time fetch instead of a real-time listener
+    const fetchSchools = async () => {
+      try {
+        console.log("Attempting to fetch schools data (no listener)...");
+        const schoolsCollectionRef = collection(firestore, "schools");
+        const q = query(schoolsCollectionRef);
+        
+        // Using getDocs directly for one-time fetch
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+          console.log("No schools found in database. Using backup mock data.");
+          // Use mock data as fallback
+          setSchools(MOCK_SCHOOLS);
+        } else {
+          console.log(`Firestore fetch successful: ${querySnapshot.size} schools`);
+          const schoolsData = [];
+          querySnapshot.forEach((doc) => {
+            schoolsData.push({ ...doc.data(), id: doc.id });
+          });
+          setSchools(schoolsData);
+        }
+        setDataLoading(false);
+      } catch (error) {
+        console.error("Error in Firestore fetch:", error);
+        console.log("Using backup mock data due to error.");
+        // Use mock data as fallback
+        setSchools(MOCK_SCHOOLS);
+        setDataLoading(false);
+      }
+    };
     
-    // Simulate loading delay
-    const timer = setTimeout(() => {
-      console.log("Mock data loaded");
-      setSchools(MOCK_SCHOOLS);
-      setDataLoading(false);
-    }, 1000);
+    fetchSchools();
     
-    return () => clearTimeout(timer);
-  }, []);
+    // No cleanup needed for one-time fetch
+    return () => {
+      console.log("Component unmounting, no listener to clean up.");
+    };
+  }, []); // Empty dependency array remains correct
 
   const setViewportToSchools = (schoolsList) => {
     const schoolsWithCoords = schoolsList.filter(s => 
@@ -113,37 +151,38 @@ export default function Home() {
     // else keep default viewport if no schools have coordinates
   };
 
-  // handleSchoolsDeleted might error if it uses firestore, comment out if needed
+  // handleSchoolsDeleted without direct Firestore interaction
   const handleSchoolsDeleted = () => {
     setSchools([]); 
     setSelectedSchool(null);
     setViewport({ center: [39.8283, -98.5795], zoom: 4 });
-    console.log("Local schools cleared (mock operation).");
+    console.log("Local schools cleared after delete operation (Firestore interaction handled in component).");
   };
 
-  // Test function that doesn't use Firebase
+  // Function to test Firebase connection
   const testFirebaseConnection = async () => {
     try {
       setOperationLoading(true);
-      setMessage({ text: 'Testing connection (mock)...', type: 'info' });
+      setMessage({ text: 'Testing Firebase connection...', type: 'info' });
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Test reading from schools collection
+      const schoolsCollectionRef = collection(firestore, "schools");
+      const q = query(schoolsCollectionRef);
+      const querySnapshot = await getDocs(q);
       
-      // Return mock successful result
       setMessage({ 
-        text: `Connection successful! Found ${MOCK_SCHOOLS.length} schools in mock data.`, 
+        text: `Firebase connection successful! Found ${querySnapshot.size} schools in database.`, 
         type: 'success' 
       });
       setFirebaseTestResult({
         timestamp: new Date().toLocaleTimeString(),
-        schoolCount: MOCK_SCHOOLS.length,
+        schoolCount: querySnapshot.size,
         success: true
       });
     } catch (error) {
-      console.error('Test error:', error);
+      console.error('Firebase test error:', error);
       setMessage({ 
-        text: `Connection failed: ${error.message || 'Unknown error'}`, 
+        text: `Firebase connection failed: ${error.message || 'Unknown error'}`, 
         type: 'error' 
       });
       setFirebaseTestResult({
