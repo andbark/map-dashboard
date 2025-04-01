@@ -9,7 +9,7 @@ import AdminTools from '../components/AdminTools';
 import TabsContainer from '../components/TabsContainer';
 import DataManager from '../components/DataManager';
 import { firestore } from '../utils/firebase';
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, query } from "firebase/firestore";
 
 // Dynamically import the Map component with no SSR to avoid window is not defined error
 const Map = dynamic(() => import('../components/Map'), { 
@@ -43,8 +43,10 @@ export default function Home() {
     console.log("Setting up Firestore listener for schools...");
 
     const schoolsCollectionRef = collection(firestore, "schools");
-    // Optional: Order schools by name
-    const q = query(schoolsCollectionRef, orderBy("name"));
+    
+    // Temporarily remove orderBy to simplify the query for debugging
+    // const q = query(schoolsCollectionRef, orderBy("name")); 
+    const q = query(schoolsCollectionRef); // Simple query for the whole collection
 
     // onSnapshot listens for real-time updates
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
