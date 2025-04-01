@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import Papa from 'papaparse';
 import { geocodeSchools } from '../utils/geocoding';
 import CustomDropdown from './CustomDropdown';
@@ -11,6 +11,7 @@ export default function CSVUpload({ setLoading }) {
   const [file, setFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState('');
   const [geocodingProgress, setGeocodingProgress] = useState(0);
   const [error, setError] = useState(null);
   const [csvHeaders, setCsvHeaders] = useState([]);
@@ -56,6 +57,7 @@ export default function CSVUpload({ setLoading }) {
   const handleClearFile = useCallback(() => {
     setFile(null);
     setError(null);
+    setProcessingStatus('');
     setGeocodingProgress(0);
     setCsvHeaders([]);
     setShowColumnMapping(false);
@@ -72,6 +74,8 @@ export default function CSVUpload({ setLoading }) {
   }, []);
 
   const preParseFile = useCallback((file) => {
+    setProcessingStatus('Reading headers...');
+    setError(null);
     Papa.parse(file, {
       header: true,
       preview: 5,
@@ -116,10 +120,12 @@ export default function CSVUpload({ setLoading }) {
         setColumnMappings(newMappings);
         
         setShowColumnMapping(true);
+        setProcessingStatus('');
       },
       error: (error) => {
         console.error('Error parsing CSV headers:', error);
         setError('Error reading CSV file headers');
+        setProcessingStatus('');
       }
     });
   }, []);
@@ -135,6 +141,7 @@ export default function CSVUpload({ setLoading }) {
     if (!file) return;
     
     setIsProcessing(true);
+    setProcessingStatus('Parsing CSV data...');
     setLoading(true);
     setError(null);
     setGeocodingProgress(0);
@@ -146,11 +153,13 @@ export default function CSVUpload({ setLoading }) {
         header: true,
         skipEmptyLines: true,
         complete: async (results) => {
+          let finalSchools = [];
           try {
             console.log("Full CSV parsing complete.");
+            setProcessingStatus('Processing mapped data...');
             
-            if (results.data.length === 0) {
-              throw new Error('The CSV file contains no data');
+            if (!results.data || results.data.length === 0) {
+              throw new Error('The CSV file contains no data rows');
             }
             
             const requiredFields = ['School Name', 'Address', 'City', 'State'];
@@ -159,89 +168,118 @@ export default function CSVUpload({ setLoading }) {
             }
             
             const schoolsToProcess = results.data
-              .filter(row => {
-                return columnMappings['School Name'] && row[columnMappings['School Name']] && 
-                       columnMappings['Address'] && row[columnMappings['Address']] && 
-                       columnMappings['City'] && row[columnMappings['City']] && 
-                       columnMappings['State'] && row[columnMappings['State']];
+              .map((row) => {
+                const mappedSchool = {
+                  name: row[columnMappings['School Name']] || '',
+                  district: columnMappings['School District'] ? (row[columnMappings['School District']] || '') : '',
+                  address: row[columnMappings['Address']] || '',
+                  city: row[columnMappings['City']] || '',
+                  state: row[columnMappings['State']] || '',
+                  zipCode: columnMappings['Zip Code'] ? (row[columnMappings['Zip Code']] || '') : '',
+                  latitude: columnMappings['Latitude'] ? row[columnMappings['Latitude']] : undefined,
+                  longitude: columnMappings['Longitude'] ? row[columnMappings['Longitude']] : undefined
+                };
+                
+                if (mappedSchool.name && mappedSchool.address && mappedSchool.city && mappedSchool.state) {
+                  return mappedSchool;
+                }
+                return null;
               })
-              .map((row, index) => ({
-                name: row[columnMappings['School Name']] || '',
-                district: columnMappings['School District'] ? (row[columnMappings['School District']] || '') : '',
-                address: row[columnMappings['Address']] || '',
-                city: row[columnMappings['City']] || '',
-                state: row[columnMappings['State']] || '',
-                zipCode: columnMappings['Zip Code'] ? (row[columnMappings['Zip Code']] || '') : '',
-                latitude: columnMappings['Latitude'] && row[columnMappings['Latitude']] 
-                  ? parseFloat(row[columnMappings['Latitude']]) 
-                  : undefined,
-                longitude: columnMappings['Longitude'] && row[columnMappings['Longitude']] 
-                  ? parseFloat(row[columnMappings['Longitude']]) 
-                  : undefined
-              }));
+              .filter(school => school !== null);
 
             console.log('Total Schools After Mapping & Filtering:', schoolsToProcess.length);
-            
             if (schoolsToProcess.length === 0) {
-              throw new Error('No valid school data found in the CSV file after applying mappings.');
+              throw new Error('No valid school data found after applying mappings and filtering empty required fields.');
             }
 
-            let finalSchools = schoolsToProcess;
-
-            const schoolsNeedingGeocoding = schoolsToProcess.filter(s => s.latitude === undefined || s.longitude === undefined);
+            finalSchools = schoolsToProcess;
+            
+            const schoolsNeedingGeocoding = finalSchools.filter(s => 
+                s.latitude === undefined || s.longitude === undefined || 
+                isNaN(parseFloat(s.latitude)) || isNaN(parseFloat(s.longitude))
+            );
+            
             if (schoolsNeedingGeocoding.length > 0) {
                 console.log(`Starting geocoding for ${schoolsNeedingGeocoding.length} schools...`);
+                setProcessingStatus('Geocoding addresses...');
                 try {
-                    finalSchools = await geocodeSchools(schoolsToProcess, (progress) => {
+                    finalSchools = await geocodeSchools(finalSchools, (progress) => {
                         setGeocodingProgress(progress);
                     });
                     console.log(`Geocoding complete. Final school count: ${finalSchools.length}`);
+                    setGeocodingProgress(100);
                 } catch (geocodeError) {
                     console.error('Error during geocoding process, proceeding with available coordinates:', geocodeError);
-                    setError(`Geocoding failed: ${geocodeError.message}. Some schools may not appear on map.`);
+                    setError(`Geocoding step failed: ${geocodeError.message}. Schools without coordinates were not added.`);
+                    finalSchools = finalSchools.filter(s => s.latitude !== undefined && s.longitude !== undefined && !isNaN(parseFloat(s.latitude)) && !isNaN(parseFloat(s.longitude)));
                 }
             } else {
-                console.log("No geocoding needed, all schools have coordinates.");
+                console.log("No geocoding needed based on initial check.");
+                setProcessingStatus('Preparing data for saving...');
             }
               
             console.log('Attempting to save schools to Firestore...');
+            setProcessingStatus('Saving schools to database...');
+            setGeocodingProgress(0);
+
             const schoolsCollectionRef = collection(firestore, "schools");
             const batch = writeBatch(firestore);
             let schoolsAddedCount = 0;
 
             finalSchools.forEach((schoolData) => {
+                const lat = schoolData.latitude !== undefined ? parseFloat(schoolData.latitude) : null;
+                const lng = schoolData.longitude !== undefined ? parseFloat(schoolData.longitude) : null;
+
+                const finalLat = (lat !== null && !isNaN(lat)) ? lat : null;
+                const finalLng = (lng !== null && !isNaN(lng)) ? lng : null;
+                
                 if (schoolData.name && schoolData.address && schoolData.city && schoolData.state) {
-                    const newSchoolRef = doc(schoolsCollectionRef);
-                    batch.set(newSchoolRef, {
-                        name: schoolData.name,
-                        district: schoolData.district || '',
-                        address: schoolData.address,
-                        city: schoolData.city,
-                        state: schoolData.state,
-                        zipCode: schoolData.zipCode || '',
-                        latitude: schoolData.latitude === undefined ? null : schoolData.latitude,
-                        longitude: schoolData.longitude === undefined ? null : schoolData.longitude,
+                    const schoolDocData = {
+                        name: String(schoolData.name).trim(),
+                        district: schoolData.district ? String(schoolData.district).trim() : '',
+                        address: String(schoolData.address).trim(),
+                        city: String(schoolData.city).trim(),
+                        state: String(schoolData.state).trim(),
+                        zipCode: schoolData.zipCode ? String(schoolData.zipCode).trim() : '',
+                        latitude: finalLat,
+                        longitude: finalLng,
                         uploadedFrom: currentFileName
-                    });
+                    };
+
+                    if (schoolsAddedCount < 3) {
+                        console.log(' Firestore doc data:', JSON.stringify(schoolDocData));
+                    }
+
+                    const newSchoolRef = doc(schoolsCollectionRef);
+                    batch.set(newSchoolRef, schoolDocData);
                     schoolsAddedCount++;
+                } else {
+                    console.warn('Skipping school due to missing required fields:', schoolData);
                 }
             });
 
             if (schoolsAddedCount > 0) {
                 await batch.commit();
-                console.log(`Successfully added ${schoolsAddedCount} schools to Firestore.`);
+                console.log(`Successfully committed ${schoolsAddedCount} schools to Firestore.`);
                 alert(`Successfully imported ${schoolsAddedCount} schools.`);
                 handleClearFile(); 
             } else {
-                throw new Error("No schools were eligible for saving after processing.");
+                if (error) {
+                    throw new Error(`Import failed. ${error}`);
+                } else {
+                    throw new Error("No valid schools were available to save after processing and geocoding.");
+                }
             }
 
           } catch (processingError) {
-            console.error('Error processing CSV data or saving to Firestore:', processingError);
-            setError(processingError.message || 'Error processing CSV file');
+            console.error('ERROR during processing/saving:', processingError);
+            if (!error) {
+                setError(processingError.message || 'Error processing CSV file or saving data');
+            }
           } finally {
             setIsProcessing(false);
             setLoading(false);
+            setProcessingStatus('');
             setGeocodingProgress(0);
           }
         },
@@ -250,6 +288,7 @@ export default function CSVUpload({ setLoading }) {
           setError('Error parsing CSV file');
           setIsProcessing(false);
           setLoading(false);
+          setProcessingStatus('');
         }
       });
     } catch (outerError) {
@@ -257,8 +296,9 @@ export default function CSVUpload({ setLoading }) {
       setError(outerError.message || 'Error processing file');
       setIsProcessing(false);
       setLoading(false);
+      setProcessingStatus('');
     }
-  }, [file, setLoading, columnMappings, handleClearFile]);
+  }, [file, setLoading, columnMappings, handleClearFile, error]);
   
   const handleDownloadSample = useCallback(() => {
     window.open('/sample-schools.csv', '_blank');
@@ -335,9 +375,9 @@ export default function CSVUpload({ setLoading }) {
         <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <div className="flex items-center mb-2">
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
-            <span className="font-medium text-blue-700">Processing & Geocoding... Please wait.</span>
+            <span className="font-medium text-blue-700">{processingStatus || 'Processing...'}</span>
           </div>
-          {geocodingProgress > 0 && (
+          {processingStatus === 'Geocoding addresses...' && geocodingProgress > 0 && (
             <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
               <div 
                 className="bg-blue-600 h-2.5 rounded-full transition-width duration-300 ease-linear" 
