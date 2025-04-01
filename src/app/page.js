@@ -27,7 +27,7 @@ const Map = dynamic(() => import('../components/Map'), {
 export default function Home() {
   const [schools, setSchools] = useState([]);
   const [selectedSchool, setSelectedSchool] = useState(null);
-  const [dataLoading, setDataLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
   const [operationLoading, setOperationLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [firebaseTestResult, setFirebaseTestResult] = useState(null);
@@ -37,7 +37,7 @@ export default function Home() {
   });
   const [activeTab, setActiveTab] = useState('Map View');
 
-  /* === STEP 1: TEMPORARILY COMMENT OUT FIRESTORE LISTENER ===
+  /* === RE-ENABLE FIRESTORE LISTENER === */
   // Effect to fetch schools from Firestore in real-time
   useEffect(() => {
     setDataLoading(true);
@@ -57,7 +57,7 @@ export default function Home() {
       console.log(`Firestore snapshot received: ${querySnapshot.size} schools`);
       const schoolsData = [];
       querySnapshot.forEach((doc) => {
-        schoolsData.push({ ...doc.data(), id: doc.id }); 
+        schoolsData.push({ ...doc.data(), id: doc.id });
       });
       setSchools(schoolsData);
       setDataLoading(false);
@@ -73,7 +73,6 @@ export default function Home() {
       unsubscribe();
     };
   }, []); // Empty dependency array remains correct
-  */
 
   const setViewportToSchools = (schoolsList) => {
     const schoolsWithCoords = schoolsList.filter(s => 
