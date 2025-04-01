@@ -5,7 +5,7 @@ import Papa from 'papaparse';
 import { geocodeSchools } from '../utils/geocoding';
 import CustomDropdown from './CustomDropdown';
 import { firestore } from '../utils/firebase';
-import { collection, writeBatch, doc } from "firebase/firestore";
+import { collection, writeBatch, doc, addDoc } from "firebase/firestore";
 
 export default function CSVUpload({ setLoading }) {
   const [file, setFile] = useState(null);
@@ -219,60 +219,51 @@ export default function CSVUpload({ setLoading }) {
                  setGeocodingProgress(0);
             }
              
-            console.log('Attempting to save schools to Firestore...');
-            setProcessingStatus('Saving schools to database...');
+            console.log('TEST: Preparing to write first document only (simplified data)...');
+            setProcessingStatus('TEST: Saving first school (simplified) to database...');
             setGeocodingProgress(0);
 
-            const schoolsCollectionRef = collection(firestore, "schools");
-            const batch = writeBatch(firestore);
+            if (finalSchools.length === 0) {
+                 throw new Error("No valid schools remained to test write.");
+            }
+            const firstSchoolData = finalSchools[0];
+            let schoolDocData = null;
             let schoolsAddedCount = 0;
 
-            finalSchools.forEach((schoolData) => {
-                const lat = schoolData.latitude !== undefined ? parseFloat(schoolData.latitude) : null;
-                const lng = schoolData.longitude !== undefined ? parseFloat(schoolData.longitude) : null;
-                const finalLat = (lat !== null && !isNaN(lat)) ? lat : null;
-                const finalLng = (lng !== null && !isNaN(lng)) ? lng : null;
-                
-                if (schoolData.name && schoolData.address && schoolData.city && schoolData.state) {
-                    const schoolDocData = {
-                        name: String(schoolData.name).trim(),
-                        district: schoolData.district ? String(schoolData.district).trim() : '',
-                        address: String(schoolData.address).trim(),
-                        city: String(schoolData.city).trim(),
-                        state: String(schoolData.state).trim(),
-                        zipCode: schoolData.zipCode ? String(schoolData.zipCode).trim() : '',
-                        latitude: finalLat,
-                        longitude: finalLng,
-                        uploadedFrom: currentFileName
-                    };
-                    if (schoolsAddedCount < 3) {
-                        console.log(' Firestore doc data:', JSON.stringify(schoolDocData));
-                    }
-                    const newSchoolRef = doc(schoolsCollectionRef);
-                    batch.set(newSchoolRef, schoolDocData);
-                    schoolsAddedCount++;
-                } else {
-                    console.warn('Skipping school due to missing required fields:', schoolData);
-                }
-            });
+            const lat = firstSchoolData.latitude !== undefined ? parseFloat(firstSchoolData.latitude) : null;
+            const lng = firstSchoolData.longitude !== undefined ? parseFloat(firstSchoolData.longitude) : null;
+            const finalLat = (lat !== null && !isNaN(lat)) ? lat : null;
+            const finalLng = (lng !== null && !isNaN(lng)) ? lng : null;
+            
+            if (firstSchoolData.name && firstSchoolData.address && firstSchoolData.city && firstSchoolData.state) {
+                schoolDocData = {
+                    name: String(firstSchoolData.name).trim(),
+                    district: firstSchoolData.district ? String(firstSchoolData.district).trim() : '',
+                    address: String(firstSchoolData.address).trim(),
+                    city: String(firstSchoolData.city).trim(),
+                    state: String(firstSchoolData.state).trim(),
+                    zipCode: firstSchoolData.zipCode ? String(firstSchoolData.zipCode).trim() : '',
+                    latitude: finalLat,
+                    longitude: finalLng
+                };
+                schoolsAddedCount = 1;
+            }
 
-            if (schoolsAddedCount > 0) {
-                await batch.commit();
-                console.log(`Successfully committed ${schoolsAddedCount} schools to Firestore.`);
-                alert(`Successfully imported ${schoolsAddedCount} schools.`);
+            if (schoolsAddedCount > 0 && schoolDocData) {
+                console.log('TEST: Simplified Firestore doc data for single write:', JSON.stringify(schoolDocData));
+                const schoolsCollectionRef = collection(firestore, "schools");
+                await addDoc(schoolsCollectionRef, schoolDocData);
+                console.log(`TEST: Successfully wrote single simplified school (${schoolDocData.name}) to Firestore.`);
+                alert(`TEST: Successfully imported 1 simplified school.`);
                 handleClearFile();
             } else {
-                 if (error) {
-                     throw new Error(`Import failed. ${error}`);
-                 } else {
-                     throw new Error("No valid schools were available to save after processing and geocoding.");
-                 }
+                 throw new Error("The first school was invalid or could not be processed.");
             }
 
           } catch (processingError) {
-            console.error('ERROR during processing/saving:', processingError);
+            console.error('ERROR during TEST processing/saving:', processingError);
             if (!error) {
-                setError(processingError.message || 'Error processing CSV file or saving data');
+                setError(processingError.message || 'Error processing/saving data');
             }
           } finally {
             setIsProcessing(false);
