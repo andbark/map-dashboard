@@ -15,12 +15,12 @@ const firebaseConfig = {
   measurementId: "G-DT81BVFCYL"
 };
 
-let app = undefined; // Default to undefined
-let firestore = undefined;
-let auth = undefined;
-let storage = undefined;
+let app;
+let firestore;
+let auth;
+let storage;
 
-/* === STEP 1: TEMPORARILY COMMENTED OUT INITIALIZATION ===
+// === STEP 2: RE-ENABLING INITIALIZATION ===
 // Check if Firebase app is already initialized
 if (getApps().length === 0) {
   try {
@@ -33,6 +33,7 @@ if (getApps().length === 0) {
     console.log('Firebase initialized successfully (new instance).');
   } catch (error) {
     console.error('Error initializing Firebase:', error);
+    // Handle initialization error appropriately
   }
 } else {
   // Get the default app if it already exists
@@ -43,10 +44,7 @@ if (getApps().length === 0) {
   storage = getStorage(app);
   console.log('Firebase app already initialized, getting existing instance.');
 }
-*/
+// === END RE-ENABLING ===
 
-// Removed IndexedDB persistence setup temporarily to rule it out as an issue
-// It can sometimes cause complexity with initialization
-
-// Export potentially undefined services
+// Export the initialized services (or potentially undefined if initialization failed)
 export { app, firestore, auth, storage }; 
