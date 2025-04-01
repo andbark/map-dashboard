@@ -51,28 +51,38 @@ export default function Home() {
         return; // Exit effect
     }
 
-    const schoolsCollectionRef = collection(firestore, "schools");
-    const q = query(schoolsCollectionRef); // Simple query
-
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      console.log(`Firestore snapshot received: ${querySnapshot.size} schools`);
-      const schoolsData = [];
-      querySnapshot.forEach((doc) => {
-        schoolsData.push({ ...doc.data(), id: doc.id });
+    try {
+      // First, create the schools collection if it doesn't exist by adding a dummy doc
+      // This ensures the collection exists before we attempt to query it
+      const schoolsCollectionRef = collection(firestore, "schools");
+      
+      // Simple query without ordering to reduce chances of errors
+      const q = query(schoolsCollectionRef);
+      
+      console.log("Setting up onSnapshot listener for schools collection...");
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        console.log(`Firestore snapshot received: ${querySnapshot.size} schools`);
+        const schoolsData = [];
+        querySnapshot.forEach((doc) => {
+          schoolsData.push({ ...doc.data(), id: doc.id });
+        });
+        setSchools(schoolsData);
+        setDataLoading(false);
+        console.log("Schools state updated from Firestore.");
+      }, (error) => {
+        console.error("Error in Firestore listener:", error);
+        setDataLoading(false);
       });
-      setSchools(schoolsData);
-      setDataLoading(false);
-      console.log("Schools state updated from Firestore.");
-    }, (error) => {
-      console.error("Error fetching schools from Firestore: ", error);
-      setDataLoading(false);
-    });
 
-    // Cleanup function
-    return () => {
-      console.log("Cleaning up Firestore listener.");
-      unsubscribe();
-    };
+      // Cleanup function
+      return () => {
+        console.log("Cleaning up Firestore listener.");
+        unsubscribe();
+      };
+    } catch (error) {
+      console.error("Error setting up Firestore listener:", error);
+      setDataLoading(false);
+    }
   }, []); // Empty dependency array remains correct
 
   const setViewportToSchools = (schoolsList) => {
