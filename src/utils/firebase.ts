@@ -15,16 +15,20 @@ const firebaseConfig = {
   measurementId: "G-DT81BVFCYL"
 };
 
-// Initialize Firebase App and Services using a Singleton pattern
 let app;
 let firestore;
 let auth;
 let storage;
 
+// Check if Firebase app is already initialized
 if (getApps().length === 0) {
-  // Initialize the default app only if it doesn't exist
   try {
+    // Initialize the default app only if it doesn't exist
     app = initializeApp(firebaseConfig);
+    // Get services immediately after initializing the app
+    firestore = getFirestore(app);
+    auth = getAuth(app);
+    storage = getStorage(app);
     console.log('Firebase initialized successfully (new instance).');
   } catch (error) {
     console.error('Error initializing Firebase:', error);
@@ -34,21 +38,13 @@ if (getApps().length === 0) {
 } else {
   // Get the default app if it already exists
   app = getApp();
+  // Get services using the existing app instance
+  // These calls are safe even if called before, they return the same instance
+  firestore = getFirestore(app);
+  auth = getAuth(app);
+  storage = getStorage(app);
   console.log('Firebase app already initialized, getting existing instance.');
 }
-
-// Get Firestore, Auth, Storage instances (safe to call multiple times)
-try {
-  firestore = getFirestore(app);
-} catch(e) { console.error("Error getting Firestore instance:", e); }
-
-try {
-  auth = getAuth(app);
-} catch(e) { console.error("Error getting Auth instance:", e); }
-
-try {
-  storage = getStorage(app);
-} catch(e) { console.error("Error getting Storage instance:", e); }
 
 // Removed IndexedDB persistence setup temporarily to rule it out as an issue
 // It can sometimes cause complexity with initialization
