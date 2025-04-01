@@ -1,5 +1,5 @@
 import { collection, getDocs, addDoc, deleteDoc, doc, writeBatch } from 'firebase/firestore';
-import { firestore } from '../../utils/firebase';
+import { firestore } from '../../../utils/firebase';
 
 // GET route to fetch all schools
 export async function GET(request) {
