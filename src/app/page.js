@@ -10,6 +10,7 @@ import TabsContainer from '../components/TabsContainer';
 import DataManager from '../components/DataManager';
 import { firestore } from '../utils/firebase';
 import { collection, onSnapshot, query } from "firebase/firestore";
+import { getAllSchools } from '../lib/database';
 
 // Dynamically import the Map component with no SSR to avoid window is not defined error
 const Map = dynamic(() => import('../components/Map'), { 
