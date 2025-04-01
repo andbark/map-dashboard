@@ -59,10 +59,13 @@ export async function getAllSchools() {
     return { success: false, error: 'Firestore not initialized' };
   }
   try {
+    console.log("Using simplified getAllSchools function (no ordering)");
     const schoolsCollectionRef = collection(firestore, 'schools');
-    const q = query(schoolsCollectionRef, orderBy('name'));
+    // Using simple query without orderBy to avoid potential index issues
+    const q = query(schoolsCollectionRef);
     const querySnapshot = await getDocs(q);
     const schools = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+    console.log(`Successfully fetched ${schools.length} schools`);
     return { success: true, schools };
   } catch (error) {
     console.error('Error fetching schools from Firestore:', error);
