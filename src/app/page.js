@@ -8,9 +8,47 @@ import HubSpotIntegration from '../components/HubSpotIntegration';
 import AdminTools from '../components/AdminTools';
 import TabsContainer from '../components/TabsContainer';
 import DataManager from '../components/DataManager';
-import { firestore } from '../utils/firebase';
-import { collection, onSnapshot, query } from "firebase/firestore";
-import { getAllSchools } from '../lib/database';
+// Import commented out to completely disable Firebase
+// import { firestore } from '../utils/firebase';
+// import { collection, onSnapshot, query } from "firebase/firestore";
+// import { getAllSchools } from '../lib/database';
+
+// MOCK DATA for testing without Firebase
+const MOCK_SCHOOLS = [
+  {
+    id: 'mock1',
+    name: 'Washington High School',
+    district: 'Eastern District',
+    address: '123 Main St',
+    city: 'Washington',
+    state: 'DC',
+    zipCode: '20001',
+    latitude: 38.8951,
+    longitude: -77.0364
+  },
+  {
+    id: 'mock2',
+    name: 'Lincoln Elementary',
+    district: 'Northern District',
+    address: '456 Oak Avenue',
+    city: 'Chicago',
+    state: 'IL',
+    zipCode: '60601',
+    latitude: 41.8781,
+    longitude: -87.6298
+  },
+  {
+    id: 'mock3',
+    name: 'Roosevelt Middle School',
+    district: 'Western District',
+    address: '789 Pine Street',
+    city: 'San Francisco',
+    state: 'CA',
+    zipCode: '94101',
+    latitude: 37.7749,
+    longitude: -122.4194
+  }
+];
 
 // Dynamically import the Map component with no SSR to avoid window is not defined error
 const Map = dynamic(() => import('../components/Map'), { 
@@ -38,50 +76,19 @@ export default function Home() {
   });
   const [activeTab, setActiveTab] = useState('Map View');
 
-  /* === RE-ENABLE FIRESTORE LISTENER === */
-  // Effect to fetch schools from Firestore in real-time
+  /* === COMPLETELY MOCKED DATA - NO FIREBASE === */
   useEffect(() => {
-    setDataLoading(true);
-    console.log("Setting up Firestore data fetch...");
-
-    // Check if firestore is available before using it
-    if (!firestore) {
-        console.error("Firestore is not initialized. Cannot fetch data.");
-        setDataLoading(false); // Stop loading state
-        return; // Exit effect
-    }
-
-    // Using a simple one-time fetch instead of a real-time listener
-    const fetchSchools = async () => {
-      try {
-        console.log("Attempting to fetch schools data once (no listener)...");
-        const schoolsCollectionRef = collection(firestore, "schools");
-        const q = query(schoolsCollectionRef);
-        
-        // Using getDocs instead of onSnapshot for a one-time fetch
-        const querySnapshot = await getAllSchools();
-        
-        if (querySnapshot.success) {
-          console.log(`Firestore fetch successful: ${querySnapshot.schools.length} schools`);
-          setSchools(querySnapshot.schools);
-        } else {
-          console.error("Error fetching schools:", querySnapshot.error);
-        }
-        
-        setDataLoading(false);
-      } catch (error) {
-        console.error("Error in Firestore fetch:", error);
-        setDataLoading(false);
-      }
-    };
+    console.log("Loading mock data instead of Firebase...");
     
-    fetchSchools();
+    // Simulate loading delay
+    const timer = setTimeout(() => {
+      console.log("Mock data loaded");
+      setSchools(MOCK_SCHOOLS);
+      setDataLoading(false);
+    }, 1000);
     
-    // No cleanup needed for one-time fetch
-    return () => {
-      console.log("Component unmounting, no listener to clean up.");
-    };
-  }, []); // Empty dependency array remains correct
+    return () => clearTimeout(timer);
+  }, []);
 
   const setViewportToSchools = (schoolsList) => {
     const schoolsWithCoords = schoolsList.filter(s => 
@@ -111,43 +118,32 @@ export default function Home() {
     setSchools([]); 
     setSelectedSchool(null);
     setViewport({ center: [39.8283, -98.5795], zoom: 4 });
-    console.log("Local schools cleared after delete operation (Firestore interaction disabled).");
+    console.log("Local schools cleared (mock operation).");
   };
 
-  // Function to test Firebase connection
+  // Test function that doesn't use Firebase
   const testFirebaseConnection = async () => {
     try {
       setOperationLoading(true);
-      setMessage({ text: 'Testing Firebase connection...', type: 'info' });
+      setMessage({ text: 'Testing connection (mock)...', type: 'info' });
       
-      // Test reading from schools collection
-      const result = await getAllSchools();
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      if (result.success) {
-        setMessage({ 
-          text: `Firebase connection successful! Found ${result.schools.length} schools in database.`, 
-          type: 'success' 
-        });
-        setFirebaseTestResult({
-          timestamp: new Date().toLocaleTimeString(),
-          schoolCount: result.schools.length,
-          success: true
-        });
-      } else {
-        setMessage({ 
-          text: `Firebase connection failed: ${result.error || 'Unknown error'}`, 
-          type: 'error' 
-        });
-        setFirebaseTestResult({
-          timestamp: new Date().toLocaleTimeString(),
-          error: result.error,
-          success: false
-        });
-      }
-    } catch (error) {
-      console.error('Firebase test error:', error);
+      // Return mock successful result
       setMessage({ 
-        text: `Firebase connection failed: ${error.message || 'Unknown error'}`, 
+        text: `Connection successful! Found ${MOCK_SCHOOLS.length} schools in mock data.`, 
+        type: 'success' 
+      });
+      setFirebaseTestResult({
+        timestamp: new Date().toLocaleTimeString(),
+        schoolCount: MOCK_SCHOOLS.length,
+        success: true
+      });
+    } catch (error) {
+      console.error('Test error:', error);
+      setMessage({ 
+        text: `Connection failed: ${error.message || 'Unknown error'}`, 
         type: 'error' 
       });
       setFirebaseTestResult({
