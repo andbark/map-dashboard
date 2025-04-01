@@ -5,7 +5,7 @@ import Papa from 'papaparse';
 import { geocodeSchools } from '../utils/geocoding';
 import CustomDropdown from './CustomDropdown';
 import { firestore } from '../utils/firebase';
-import { collection, writeBatch, doc } from "firebase/firestore";
+import { collection, writeBatch, doc, addDoc } from "firebase/firestore";
 
 export default function CSVUpload({ setLoading }) {
   const [file, setFile] = useState(null);
@@ -136,170 +136,49 @@ export default function CSVUpload({ setLoading }) {
       [field]: csvHeader
     }));
   }, []);
-  
-  const processFile = useCallback(async () => {
+
+  const testFirestoreWrite = async () => {
     if (!file) return;
-    
+
     setIsProcessing(true);
-    setProcessingStatus('Parsing CSV data...');
+    setProcessingStatus('TEST: Attempting single Firestore write...');
     setLoading(true);
     setError(null);
-    setGeocodingProgress(0);
-    const currentFileName = file.name;
-    console.log("Starting CSV file processing for:", currentFileName);
-    
+
     try {
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: async (results) => {
-          let finalSchools = [];
-          try {
-            console.log("Full CSV parsing complete.");
-            setProcessingStatus('Processing mapped data...');
-            
-            if (!results.data || results.data.length === 0) {
-              throw new Error('The CSV file contains no data rows');
-            }
-            
-            const requiredFields = ['School Name', 'Address', 'City', 'State'];
-            if (requiredFields.some(field => !columnMappings[field])) {
-              throw new Error('Please map all required fields (School Name, Address, City, State) before uploading');
-            }
-            
-            const schoolsToProcess = results.data
-              .map((row) => {
-                const mappedSchool = {
-                  name: row[columnMappings['School Name']] || '',
-                  district: columnMappings['School District'] ? (row[columnMappings['School District']] || '') : '',
-                  address: row[columnMappings['Address']] || '',
-                  city: row[columnMappings['City']] || '',
-                  state: row[columnMappings['State']] || '',
-                  zipCode: columnMappings['Zip Code'] ? (row[columnMappings['Zip Code']] || '') : '',
-                  latitude: columnMappings['Latitude'] ? row[columnMappings['Latitude']] : undefined,
-                  longitude: columnMappings['Longitude'] ? row[columnMappings['Longitude']] : undefined
-                };
-                
-                if (mappedSchool.name && mappedSchool.address && mappedSchool.city && mappedSchool.state) {
-                  return mappedSchool;
-                }
-                return null;
-              })
-              .filter(school => school !== null);
+      console.log("TEST: Creating hardcoded test document...");
+      const testDocData = {
+        name: "Test School - " + Date.now(),
+        address: "123 Test St",
+        city: "Testville",
+        state: "TS",
+        zipCode: "12345",
+        district: "Test District",
+        latitude: 40.123,
+        longitude: -75.456,
+        uploadedFrom: "TEST_WRITE"
+      };
 
-            console.log('Total Schools After Mapping & Filtering:', schoolsToProcess.length);
-            if (schoolsToProcess.length === 0) {
-              throw new Error('No valid school data found after applying mappings and filtering empty required fields.');
-            }
+      console.log("TEST: Data to write:", JSON.stringify(testDocData));
 
-            finalSchools = schoolsToProcess;
-            
-            const schoolsNeedingGeocoding = finalSchools.filter(s => 
-                s.latitude === undefined || s.longitude === undefined || 
-                isNaN(parseFloat(s.latitude)) || isNaN(parseFloat(s.longitude))
-            );
-            
-            if (schoolsNeedingGeocoding.length > 0) {
-                console.log(`Starting geocoding for ${schoolsNeedingGeocoding.length} schools...`);
-                setProcessingStatus('Geocoding addresses...');
-                try {
-                    finalSchools = await geocodeSchools(finalSchools, (progress) => {
-                        setGeocodingProgress(progress);
-                    });
-                    console.log(`Geocoding complete. Final school count: ${finalSchools.length}`);
-                    setGeocodingProgress(100);
-                } catch (geocodeError) {
-                    console.error('Error during geocoding process, proceeding with available coordinates:', geocodeError);
-                    setError(`Geocoding step failed: ${geocodeError.message}. Schools without coordinates were not added.`);
-                    finalSchools = finalSchools.filter(s => s.latitude !== undefined && s.longitude !== undefined && !isNaN(parseFloat(s.latitude)) && !isNaN(parseFloat(s.longitude)));
-                }
-            } else {
-                console.log("No geocoding needed based on initial check.");
-                setProcessingStatus('Preparing data for saving...');
-            }
-              
-            console.log('Attempting to save schools to Firestore...');
-            setProcessingStatus('Saving schools to database...');
-            setGeocodingProgress(0);
-
-            const schoolsCollectionRef = collection(firestore, "schools");
-            const batch = writeBatch(firestore);
-            let schoolsAddedCount = 0;
-
-            finalSchools.forEach((schoolData) => {
-                const lat = schoolData.latitude !== undefined ? parseFloat(schoolData.latitude) : null;
-                const lng = schoolData.longitude !== undefined ? parseFloat(schoolData.longitude) : null;
-
-                const finalLat = (lat !== null && !isNaN(lat)) ? lat : null;
-                const finalLng = (lng !== null && !isNaN(lng)) ? lng : null;
-                
-                if (schoolData.name && schoolData.address && schoolData.city && schoolData.state) {
-                    const schoolDocData = {
-                        name: String(schoolData.name).trim(),
-                        district: schoolData.district ? String(schoolData.district).trim() : '',
-                        address: String(schoolData.address).trim(),
-                        city: String(schoolData.city).trim(),
-                        state: String(schoolData.state).trim(),
-                        zipCode: schoolData.zipCode ? String(schoolData.zipCode).trim() : '',
-                        latitude: finalLat,
-                        longitude: finalLng,
-                        uploadedFrom: currentFileName
-                    };
-
-                    if (schoolsAddedCount < 3) {
-                        console.log(' Firestore doc data:', JSON.stringify(schoolDocData));
-                    }
-
-                    const newSchoolRef = doc(schoolsCollectionRef);
-                    batch.set(newSchoolRef, schoolDocData);
-                    schoolsAddedCount++;
-                } else {
-                    console.warn('Skipping school due to missing required fields:', schoolData);
-                }
-            });
-
-            if (schoolsAddedCount > 0) {
-                await batch.commit();
-                console.log(`Successfully committed ${schoolsAddedCount} schools to Firestore.`);
-                alert(`Successfully imported ${schoolsAddedCount} schools.`);
-                handleClearFile(); 
-            } else {
-                if (error) {
-                    throw new Error(`Import failed. ${error}`);
-                } else {
-                    throw new Error("No valid schools were available to save after processing and geocoding.");
-                }
-            }
-
-          } catch (processingError) {
-            console.error('ERROR during processing/saving:', processingError);
-            if (!error) {
-                setError(processingError.message || 'Error processing CSV file or saving data');
-            }
-          } finally {
-            setIsProcessing(false);
-            setLoading(false);
-            setProcessingStatus('');
-            setGeocodingProgress(0);
-          }
-        },
-        error: (parseError) => {
-          console.error('Error parsing CSV file with Papa Parse:', parseError);
-          setError('Error parsing CSV file');
-          setIsProcessing(false);
-          setLoading(false);
-          setProcessingStatus('');
-        }
-      });
-    } catch (outerError) {
-      console.error('General error before file processing:', outerError);
-      setError(outerError.message || 'Error processing file');
+      const schoolsCollectionRef = collection(firestore, "schools");
+      
+      const docRef = await addDoc(schoolsCollectionRef, testDocData);
+      
+      console.log("TEST: Single document write successful! Document ID:", docRef.id);
+      alert("TEST: Successfully wrote a single test document to Firestore! Check the database and console.");
+      handleClearFile();
+    } catch (testError) {
+      console.error("TEST ERROR during single document write:", testError);
+      setError(`TEST FAILED: Could not write single document. Error: ${testError.message}`);
+      alert("TEST FAILED: Could not write single test document. Check console for errors.");
+    } finally {
       setIsProcessing(false);
-      setLoading(false);
       setProcessingStatus('');
+      setLoading(false);
     }
-  }, [file, setLoading, columnMappings, handleClearFile, error]);
-  
+  };
+
   const handleDownloadSample = useCallback(() => {
     window.open('/sample-schools.csv', '_blank');
   }, []);
@@ -377,14 +256,6 @@ export default function CSVUpload({ setLoading }) {
             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
             <span className="font-medium text-blue-700">{processingStatus || 'Processing...'}</span>
           </div>
-          {processingStatus === 'Geocoding addresses...' && geocodingProgress > 0 && (
-            <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-              <div 
-                className="bg-blue-600 h-2.5 rounded-full transition-width duration-300 ease-linear" 
-                style={{ width: `${geocodingProgress}%` }}
-              ></div>
-            </div>
-          )}
         </div>
       )}
       
@@ -428,11 +299,11 @@ export default function CSVUpload({ setLoading }) {
       <div className="flex flex-col sm:flex-row justify-between gap-2">
         {file && showColumnMapping && (
              <button 
-              onClick={processFile}
-              disabled={isProcessing || !file || !showColumnMapping || ['School Name', 'Address', 'City', 'State'].some(f => !columnMappings[f])}
-              className={`btn-primary ${ (isProcessing || !file || !showColumnMapping || ['School Name', 'Address', 'City', 'State'].some(f => !columnMappings[f])) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              onClick={testFirestoreWrite}
+              disabled={isProcessing || !file || !showColumnMapping}
+              className={`btn-primary ${ (isProcessing || !file || !showColumnMapping) ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              {isProcessing ? 'Processing...' : 'Import & Geocode Schools'}
+              {isProcessing ? 'Processing Test...' : 'TEST Firestore Write'}
             </button>
         )}
        
