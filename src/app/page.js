@@ -27,7 +27,7 @@ const Map = dynamic(() => import('../components/Map'), {
 export default function Home() {
   const [schools, setSchools] = useState([]);
   const [selectedSchool, setSelectedSchool] = useState(null);
-  const [dataLoading, setDataLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(false);
   const [operationLoading, setOperationLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [firebaseTestResult, setFirebaseTestResult] = useState(null);
@@ -37,43 +37,43 @@ export default function Home() {
   });
   const [activeTab, setActiveTab] = useState('Map View');
 
+  /* === STEP 1: TEMPORARILY COMMENT OUT FIRESTORE LISTENER ===
   // Effect to fetch schools from Firestore in real-time
   useEffect(() => {
     setDataLoading(true);
     console.log("Setting up Firestore listener for schools...");
 
-    const schoolsCollectionRef = collection(firestore, "schools");
-    
-    // Temporarily remove orderBy to simplify the query for debugging
-    // const q = query(schoolsCollectionRef, orderBy("name")); 
-    const q = query(schoolsCollectionRef); // Simple query for the whole collection
+    // Check if firestore is available before using it
+    if (!firestore) {
+        console.error("Firestore is not initialized. Cannot set up listener.");
+        setDataLoading(false); // Stop loading state
+        return; // Exit effect
+    }
 
-    // onSnapshot listens for real-time updates
+    const schoolsCollectionRef = collection(firestore, "schools");
+    const q = query(schoolsCollectionRef); // Simple query
+
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       console.log(`Firestore snapshot received: ${querySnapshot.size} schools`);
       const schoolsData = [];
       querySnapshot.forEach((doc) => {
-        schoolsData.push({ ...doc.data(), id: doc.id }); // Add document ID to school data
+        schoolsData.push({ ...doc.data(), id: doc.id }); 
       });
       setSchools(schoolsData);
       setDataLoading(false);
       console.log("Schools state updated from Firestore.");
-      // Optional: Adjust viewport after initial data load
-      // if (schoolsData.length > 0 && viewport.zoom === 4) { // Only adjust if on initial default zoom
-      //   setViewportToSchools(schoolsData); 
-      // }
     }, (error) => {
       console.error("Error fetching schools from Firestore: ", error);
-      // Handle error appropriately, maybe show a message to the user
       setDataLoading(false);
     });
 
-    // Cleanup function to unsubscribe when the component unmounts
+    // Cleanup function
     return () => {
       console.log("Cleaning up Firestore listener.");
       unsubscribe();
     };
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, []); // Empty dependency array remains correct
+  */
 
   const setViewportToSchools = (schoolsList) => {
     const schoolsWithCoords = schoolsList.filter(s => 
@@ -98,15 +98,12 @@ export default function Home() {
     // else keep default viewport if no schools have coordinates
   };
 
+  // handleSchoolsDeleted might error if it uses firestore, comment out if needed
   const handleSchoolsDeleted = () => {
-    setSchools([]); // Clear schools locally immediately, Firestore listener will update if needed
+    setSchools([]); 
     setSelectedSchool(null);
-    // Reset viewport or handle as needed
-    setViewport({
-      center: [39.8283, -98.5795],
-      zoom: 4
-    });
-    console.log("Local schools cleared after delete operation.");
+    setViewport({ center: [39.8283, -98.5795], zoom: 4 });
+    console.log("Local schools cleared after delete operation (Firestore interaction disabled).");
   };
 
   // Function to test Firebase connection
@@ -178,40 +175,42 @@ export default function Home() {
             content: (
               <div className="space-y-6">
                 <div className="relative">
+                  {/* Map receives empty schools array initially */}
                   <Map 
                     schools={schools} 
                     selectedSchool={selectedSchool}
-                    onSchoolSelect={setSelectedSchool}
+                    onSchoolSelect={setSelectedSchool} 
                     viewport={viewport}
-                    setViewport={setViewport}
+                    setViewport={setViewport} 
                   />
                 </div>
-                
+                {/* SchoolList receives empty schools array and isLoading=false */}
                 <SchoolList
                   schools={schools}
                   selectedSchool={selectedSchool}
-                  onSelectSchool={setSelectedSchool}
-                  isLoading={dataLoading}
+                  onSelectSchool={setSelectedSchool} 
+                  isLoading={dataLoading} 
                 />
               </div>
             ),
           },
           {
             label: 'Upload CSV',
-            content: (
-              <CSVUpload setLoading={setOperationLoading} />
-            ),
+            // CSVUpload might fail later if it tries to use firestore/storage
+            content: <CSVUpload setLoading={setOperationLoading} />, 
           },
           {
             label: 'Data Management',
+            // DataManager might fail if it uses firestore
             content: (
               <DataManager
                 schools={schools} 
-                onSchoolsDeleted={handleSchoolsDeleted}
-                isLoading={dataLoading || operationLoading}
+                onSchoolsDeleted={handleSchoolsDeleted} 
+                isLoading={dataLoading || operationLoading} 
               />
             ),
           },
+           // Other tabs might also fail if they use Firebase services
           {
             label: 'Firebase Test',
             content: (
@@ -243,7 +242,7 @@ export default function Home() {
             ),
           },
           {
-            label: 'HubSpot Integration',
+            label: 'HubSpot',
             content: <HubSpotIntegration schools={schools} setLoading={setOperationLoading} />,
           },
           {
